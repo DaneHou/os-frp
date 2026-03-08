@@ -1,0 +1,30 @@
+{% if helpers.exists('OPNsense.frp.server.enabled') and OPNsense.frp.server.enabled == '1' %}
+bindAddr = "{{ OPNsense.frp.server.bindAddr }}"
+bindPort = {{ OPNsense.frp.server.bindPort }}
+log.level = "{{ OPNsense.frp.server.logLevel }}"
+log.to = "/var/log/frp/frps.log"
+log.maxDays = 7
+
+{% if OPNsense.frp.server.authMethod == 'token' %}
+auth.method = "token"
+auth.token = "{{ OPNsense.frp.server.authToken }}"
+{% endif %}
+
+transport.tcpMux = {{ "true" if OPNsense.frp.server.transportTcpMux == '1' else "false" }}
+transport.tls.force = {{ "true" if OPNsense.frp.server.transportTlsForce == '1' else "false" }}
+transport.maxPoolCount = {{ OPNsense.frp.server.maxPoolCount }}
+
+{% if OPNsense.frp.server.webServerEnabled == '1' %}
+webServer.addr = "{{ OPNsense.frp.server.webServerAddr }}"
+webServer.port = {{ OPNsense.frp.server.webServerPort }}
+webServer.user = "{{ OPNsense.frp.server.webServerUser }}"
+webServer.password = "{{ OPNsense.frp.server.webServerPassword }}"
+{% endif %}
+
+{% if OPNsense.frp.server.vhostHTTPPort and OPNsense.frp.server.vhostHTTPPort != '0' %}
+vhostHTTPPort = {{ OPNsense.frp.server.vhostHTTPPort }}
+{% endif %}
+{% if OPNsense.frp.server.vhostHTTPSPort and OPNsense.frp.server.vhostHTTPSPort != '0' %}
+vhostHTTPSPort = {{ OPNsense.frp.server.vhostHTTPSPort }}
+{% endif %}
+{% endif %}

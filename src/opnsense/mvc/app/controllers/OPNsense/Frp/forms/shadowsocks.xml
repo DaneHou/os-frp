@@ -1,0 +1,44 @@
+<form>
+    <field>
+        <id>shadowsocks.enabled</id>
+        <label>Enable Shadowsocks Server</label>
+        <type>checkbox</type>
+        <help>Enable or disable the Shadowsocks server (ssserver-rust).</help>
+    </field>
+    <field>
+        <id>shadowsocks.serverAddr</id>
+        <label>Listen Address</label>
+        <type>text</type>
+        <help>Address to listen on (default: 0.0.0.0).</help>
+    </field>
+    <field>
+        <id>shadowsocks.serverPort</id>
+        <label>Listen Port</label>
+        <type>text</type>
+        <help>Port to listen on (default: 8388).</help>
+    </field>
+    <field>
+        <id>shadowsocks.password</id>
+        <label>Password</label>
+        <type>password</type>
+        <help>Shadowsocks encryption password.</help>
+    </field>
+    <field>
+        <id>shadowsocks.cipher</id>
+        <label>Cipher</label>
+        <type>dropdown</type>
+        <help>Encryption cipher to use.</help>
+    </field>
+    <field>
+        <id>shadowsocks.timeout</id>
+        <label>Timeout</label>
+        <type>text</type>
+        <help>Connection timeout in seconds (default: 60).</help>
+    </field>
+    <field>
+        <id>shadowsocks.tcpudpmode</id>
+        <label>TCP/UDP Mode</label>
+        <type>dropdown</type>
+        <help>Network protocol mode.</help>
+    </field>
+</form>

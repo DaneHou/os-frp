@@ -1,0 +1,102 @@
+#!/bin/sh
+
+# PROVIDE: frp
+# REQUIRE: LOGIN
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="frp"
+rcvar="frp_enable"
+
+load_rc_config $name
+
+: ${frp_enable:="NO"}
+: ${frp_mode:="client"}
+
+pidfile="/var/run/frp.pid"
+logdir="/var/log/frp"
+confdir="/usr/local/etc/frp"
+
+start_cmd="${name}_start"
+stop_cmd="${name}_stop"
+status_cmd="${name}_status"
+restart_cmd="${name}_restart"
+
+frp_start()
+{
+    if [ ! -d "$logdir" ]; then
+        mkdir -p "$logdir"
+    fi
+
+    if [ ! -d "$confdir" ]; then
+        mkdir -p "$confdir"
+    fi
+
+    # Generate configs via template engine
+    /usr/local/bin/pluginctl -c frp
+
+    if [ "$frp_mode" = "client" ]; then
+        binary="/usr/local/bin/frpc"
+        config="${confdir}/frpc.toml"
+    else
+        binary="/usr/local/bin/frps"
+        config="${confdir}/frps.toml"
+    fi
+
+    if [ ! -x "$binary" ]; then
+        echo "FRP binary not found: $binary"
+        return 1
+    fi
+
+    if [ ! -f "$config" ]; then
+        echo "FRP config not found: $config"
+        return 1
+    fi
+
+    echo "Starting FRP (${frp_mode})..."
+    /usr/sbin/daemon -p "$pidfile" -f "$binary" -c "$config"
+}
+
+frp_stop()
+{
+    if [ -f "$pidfile" ]; then
+        pid=$(cat "$pidfile")
+        if kill -0 "$pid" 2>/dev/null; then
+            echo "Stopping FRP..."
+            kill "$pid"
+            # Wait up to 5 seconds
+            count=0
+            while kill -0 "$pid" 2>/dev/null && [ $count -lt 10 ]; do
+                sleep 0.5
+                count=$((count + 1))
+            done
+            if kill -0 "$pid" 2>/dev/null; then
+                kill -9 "$pid"
+            fi
+        fi
+        rm -f "$pidfile"
+    fi
+}
+
+frp_status()
+{
+    if [ -f "$pidfile" ]; then
+        pid=$(cat "$pidfile")
+        if kill -0 "$pid" 2>/dev/null; then
+            echo "FRP is running (PID: ${pid}, mode: ${frp_mode})"
+            return 0
+        fi
+    fi
+    echo "FRP is not running"
+    return 1
+}
+
+frp_restart()
+{
+    frp_stop
+    sleep 1
+    frp_start
+}
+
+run_rc_command "$1"

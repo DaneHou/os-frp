@@ -1,0 +1,86 @@
+<form>
+    <field>
+        <id>proxy.enabled</id>
+        <label>Enabled</label>
+        <type>checkbox</type>
+        <help>Enable this proxy entry.</help>
+    </field>
+    <field>
+        <id>proxy.name</id>
+        <label>Name</label>
+        <type>text</type>
+        <help>Unique proxy name (alphanumeric, underscore, dash).</help>
+    </field>
+    <field>
+        <id>proxy.proxyType</id>
+        <label>Type</label>
+        <type>dropdown</type>
+        <help>Proxy type (tcp, udp, http, https, stcp, sudp, xtcp, tcpmux).</help>
+    </field>
+    <field>
+        <id>proxy.localIP</id>
+        <label>Local IP</label>
+        <type>text</type>
+        <help>Local service IP address (default: 127.0.0.1).</help>
+    </field>
+    <field>
+        <id>proxy.localPort</id>
+        <label>Local Port</label>
+        <type>text</type>
+        <help>Local service port number.</help>
+    </field>
+    <field>
+        <id>proxy.remotePort</id>
+        <label>Remote Port</label>
+        <type>text</type>
+        <help>Remote port on the FRP server (for tcp/udp proxies).</help>
+    </field>
+    <field>
+        <id>proxy.customDomains</id>
+        <label>Custom Domains</label>
+        <type>text</type>
+        <help>Custom domains for http/https proxies (comma-separated).</help>
+    </field>
+    <field>
+        <id>proxy.subdomain</id>
+        <label>Subdomain</label>
+        <type>text</type>
+        <help>Subdomain for http/https proxies.</help>
+    </field>
+    <field>
+        <id>proxy.httpUser</id>
+        <label>HTTP Username</label>
+        <type>text</type>
+        <help>Basic auth username for http/https proxies.</help>
+    </field>
+    <field>
+        <id>proxy.httpPassword</id>
+        <label>HTTP Password</label>
+        <type>password</type>
+        <help>Basic auth password for http/https proxies.</help>
+    </field>
+    <field>
+        <id>proxy.bandwidthLimit</id>
+        <label>Bandwidth Limit</label>
+        <type>text</type>
+        <help>Bandwidth limit (e.g., "1MB").</help>
+    </field>
+    <field>
+        <id>proxy.secretKey</id>
+        <label>Secret Key</label>
+        <type>password</type>
+        <help>Secret key for stcp/xtcp proxies.</help>
+    </field>
+    <field>
+        <id>proxy.useCompression</id>
+        <label>Compression</label>
+        <type>checkbox</type>
+        <help>Enable compression for this proxy.</help>
+    </field>
+    <field>
+        <id>proxy.useEncryption</id>
+        <label>Encryption</label>
+        <type>checkbox</type>
+        <help>Enable encryption for this proxy.</help>
+    </field>
+</form>

@@ -1,0 +1,61 @@
+{% if helpers.exists('OPNsense.frp.client.enabled') and OPNsense.frp.client.enabled == '1' %}
+serverAddr = "{{ OPNsense.frp.client.serverAddr }}"
+serverPort = {{ OPNsense.frp.client.serverPort }}
+loginFailExit = {{ "true" if OPNsense.frp.client.loginFailExit == '1' else "false" }}
+log.level = "{{ OPNsense.frp.client.logLevel }}"
+log.to = "/var/log/frp/frpc.log"
+log.maxDays = 7
+
+{% if OPNsense.frp.client.authMethod == 'token' %}
+auth.method = "token"
+auth.token = "{{ OPNsense.frp.client.authToken }}"
+{% endif %}
+
+transport.tcpMux = {{ "true" if OPNsense.frp.client.transportTcpMux == '1' else "false" }}
+transport.tcpMuxKeepaliveInterval = {{ OPNsense.frp.client.transportTcpMuxKeepaliveInterval }}
+transport.heartbeatInterval = {{ OPNsense.frp.client.transportHeartbeatInterval }}
+transport.heartbeatTimeout = {{ OPNsense.frp.client.transportHeartbeatTimeout }}
+transport.tls.enable = {{ "true" if OPNsense.frp.client.transportTlsEnable == '1' else "false" }}
+{% if OPNsense.frp.client.transportTlsServerName %}
+transport.tls.serverName = "{{ OPNsense.frp.client.transportTlsServerName }}"
+{% endif %}
+transport.poolCount = {{ OPNsense.frp.client.transportPoolCount }}
+
+{% if helpers.exists('OPNsense.frp.proxy.proxies.proxy') %}
+{% for proxy in helpers.toList('OPNsense.frp.proxy.proxies.proxy') %}
+{% if proxy.enabled == '1' %}
+
+[[proxies]]
+name = "{{ proxy.name }}"
+type = "{{ proxy.proxyType }}"
+localIP = "{{ proxy.localIP }}"
+localPort = {{ proxy.localPort }}
+{% if proxy.proxyType in ['tcp', 'udp'] and proxy.remotePort %}
+remotePort = {{ proxy.remotePort }}
+{% endif %}
+{% if proxy.proxyType in ['http', 'https'] and proxy.customDomains %}
+customDomains = [{{ proxy.customDomains }}]
+{% endif %}
+{% if proxy.proxyType in ['http', 'https'] and proxy.subdomain %}
+subdomain = "{{ proxy.subdomain }}"
+{% endif %}
+{% if proxy.proxyType in ['http', 'https'] and proxy.httpUser %}
+httpUser = "{{ proxy.httpUser }}"
+httpPassword = "{{ proxy.httpPassword }}"
+{% endif %}
+{% if proxy.proxyType in ['stcp', 'xtcp'] and proxy.secretKey %}
+secretKey = "{{ proxy.secretKey }}"
+{% endif %}
+{% if proxy.bandwidthLimit %}
+transport.bandwidthLimit = "{{ proxy.bandwidthLimit }}"
+{% endif %}
+{% if proxy.useCompression == '1' %}
+transport.useCompression = true
+{% endif %}
+{% if proxy.useEncryption == '1' %}
+transport.useEncryption = true
+{% endif %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}

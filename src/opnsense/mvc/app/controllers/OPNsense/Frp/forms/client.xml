@@ -1,0 +1,90 @@
+<form>
+    <field>
+        <id>client.enabled</id>
+        <label>Enable FRP Client</label>
+        <type>checkbox</type>
+        <help>Enable or disable the FRP client (frpc).</help>
+    </field>
+    <field>
+        <id>client.serverAddr</id>
+        <label>Server Address</label>
+        <type>text</type>
+        <help>FRP server hostname or IP address.</help>
+    </field>
+    <field>
+        <id>client.serverPort</id>
+        <label>Server Port</label>
+        <type>text</type>
+        <help>FRP server port (default: 7000).</help>
+    </field>
+    <field>
+        <id>client.authMethod</id>
+        <label>Authentication Method</label>
+        <type>dropdown</type>
+        <help>Authentication method for connecting to the server.</help>
+    </field>
+    <field>
+        <id>client.authToken</id>
+        <label>Authentication Token</label>
+        <type>password</type>
+        <help>Token for server authentication.</help>
+    </field>
+    <field>
+        <id>client.loginFailExit</id>
+        <label>Exit on Login Failure</label>
+        <type>checkbox</type>
+        <help>If disabled, frpc will keep retrying on login failure (recommended for cross-border).</help>
+    </field>
+    <field>
+        <id>client.logLevel</id>
+        <label>Log Level</label>
+        <type>dropdown</type>
+        <help>FRP client logging verbosity.</help>
+    </field>
+    <field>
+        <type>header</type>
+        <label>Transport Settings</label>
+    </field>
+    <field>
+        <id>client.transportTcpMux</id>
+        <label>TCP Multiplexing</label>
+        <type>checkbox</type>
+        <help>Enable TCP multiplexing (recommended for cross-border tunnels).</help>
+    </field>
+    <field>
+        <id>client.transportTcpMuxKeepaliveInterval</id>
+        <label>TCP Mux Keepalive Interval</label>
+        <type>text</type>
+        <help>TCP mux keepalive interval in seconds (default: 10).</help>
+    </field>
+    <field>
+        <id>client.transportHeartbeatInterval</id>
+        <label>Heartbeat Interval</label>
+        <type>text</type>
+        <help>Heartbeat interval in seconds (default: 10).</help>
+    </field>
+    <field>
+        <id>client.transportHeartbeatTimeout</id>
+        <label>Heartbeat Timeout</label>
+        <type>text</type>
+        <help>Heartbeat timeout in seconds (default: 30).</help>
+    </field>
+    <field>
+        <id>client.transportTlsEnable</id>
+        <label>Enable TLS</label>
+        <type>checkbox</type>
+        <help>Enable TLS for server connection.</help>
+    </field>
+    <field>
+        <id>client.transportTlsServerName</id>
+        <label>TLS Server Name</label>
+        <type>text</type>
+        <help>Optional TLS SNI server name.</help>
+    </field>
+    <field>
+        <id>client.transportPoolCount</id>
+        <label>Connection Pool Size</label>
+        <type>text</type>
+        <help>Number of connections to pool (default: 5).</help>
+    </field>
+</form>

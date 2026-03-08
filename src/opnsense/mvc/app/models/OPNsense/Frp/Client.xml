@@ -1,0 +1,68 @@
+<model>
+    <mount>//OPNsense/frp/client</mount>
+    <description>FRP Client Settings</description>
+    <version>1.0.0</version>
+    <items>
+        <enabled type="BooleanField">
+            <default>0</default>
+            <Required>Y</Required>
+        </enabled>
+        <serverAddr type="TextField">
+            <Required>Y</Required>
+        </serverAddr>
+        <serverPort type="IntegerField">
+            <default>7000</default>
+            <Required>Y</Required>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>65535</MaximumValue>
+        </serverPort>
+        <authMethod type="OptionField">
+            <default>token</default>
+            <OptionValues>
+                <token>Token</token>
+                <none>None</none>
+            </OptionValues>
+        </authMethod>
+        <authToken type="TextField"/>
+        <transportTcpMux type="BooleanField">
+            <default>1</default>
+        </transportTcpMux>
+        <transportTcpMuxKeepaliveInterval type="IntegerField">
+            <default>10</default>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>600</MaximumValue>
+        </transportTcpMuxKeepaliveInterval>
+        <transportHeartbeatInterval type="IntegerField">
+            <default>10</default>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>600</MaximumValue>
+        </transportHeartbeatInterval>
+        <transportHeartbeatTimeout type="IntegerField">
+            <default>30</default>
+            <MinimumValue>5</MinimumValue>
+            <MaximumValue>600</MaximumValue>
+        </transportHeartbeatTimeout>
+        <transportTlsEnable type="BooleanField">
+            <default>1</default>
+        </transportTlsEnable>
+        <transportTlsServerName type="TextField"/>
+        <transportPoolCount type="IntegerField">
+            <default>5</default>
+            <MinimumValue>0</MinimumValue>
+            <MaximumValue>100</MaximumValue>
+        </transportPoolCount>
+        <loginFailExit type="BooleanField">
+            <default>0</default>
+        </loginFailExit>
+        <logLevel type="OptionField">
+            <default>info</default>
+            <OptionValues>
+                <trace>Trace</trace>
+                <debug>Debug</debug>
+                <info>Info</info>
+                <warn>Warning</warn>
+                <error>Error</error>
+            </OptionValues>
+        </logLevel>
+    </items>
+</model>

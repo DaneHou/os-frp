@@ -1,0 +1,5 @@
+{% if helpers.exists('OPNsense.frp.shadowsocks.enabled') and OPNsense.frp.shadowsocks.enabled == '1' %}
+frp_ssserver_enable="YES"
+{% else %}
+frp_ssserver_enable="NO"
+{% endif %}

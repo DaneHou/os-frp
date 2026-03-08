@@ -1,0 +1,110 @@
+<form>
+    <field>
+        <id>server.enabled</id>
+        <label>Enable FRP Server</label>
+        <type>checkbox</type>
+        <help>Enable or disable the FRP server (frps).</help>
+    </field>
+    <field>
+        <id>server.bindAddr</id>
+        <label>Bind Address</label>
+        <type>text</type>
+        <help>Address to bind on (default: 0.0.0.0).</help>
+    </field>
+    <field>
+        <id>server.bindPort</id>
+        <label>Bind Port</label>
+        <type>text</type>
+        <help>Port to listen on (default: 7000).</help>
+    </field>
+    <field>
+        <id>server.authMethod</id>
+        <label>Authentication Method</label>
+        <type>dropdown</type>
+        <help>Authentication method for client connections.</help>
+    </field>
+    <field>
+        <id>server.authToken</id>
+        <label>Authentication Token</label>
+        <type>password</type>
+        <help>Token for client authentication.</help>
+    </field>
+    <field>
+        <id>server.logLevel</id>
+        <label>Log Level</label>
+        <type>dropdown</type>
+        <help>FRP server logging verbosity.</help>
+    </field>
+    <field>
+        <type>header</type>
+        <label>Transport Settings</label>
+    </field>
+    <field>
+        <id>server.transportTcpMux</id>
+        <label>TCP Multiplexing</label>
+        <type>checkbox</type>
+        <help>Enable TCP multiplexing.</help>
+    </field>
+    <field>
+        <id>server.transportTlsForce</id>
+        <label>Force TLS</label>
+        <type>checkbox</type>
+        <help>Force clients to use TLS connections.</help>
+    </field>
+    <field>
+        <id>server.maxPoolCount</id>
+        <label>Max Pool Count</label>
+        <type>text</type>
+        <help>Maximum connection pool size per client (default: 5).</help>
+    </field>
+    <field>
+        <type>header</type>
+        <label>Web Dashboard</label>
+    </field>
+    <field>
+        <id>server.webServerEnabled</id>
+        <label>Enable Dashboard</label>
+        <type>checkbox</type>
+        <help>Enable the FRP web dashboard.</help>
+    </field>
+    <field>
+        <id>server.webServerAddr</id>
+        <label>Dashboard Address</label>
+        <type>text</type>
+        <help>Dashboard listen address (default: 127.0.0.1).</help>
+    </field>
+    <field>
+        <id>server.webServerPort</id>
+        <label>Dashboard Port</label>
+        <type>text</type>
+        <help>Dashboard listen port (default: 7500).</help>
+    </field>
+    <field>
+        <id>server.webServerUser</id>
+        <label>Dashboard Username</label>
+        <type>text</type>
+        <help>Dashboard login username (default: admin).</help>
+    </field>
+    <field>
+        <id>server.webServerPassword</id>
+        <label>Dashboard Password</label>
+        <type>password</type>
+        <help>Dashboard login password.</help>
+    </field>
+    <field>
+        <type>header</type>
+        <label>Virtual Host</label>
+    </field>
+    <field>
+        <id>server.vhostHTTPPort</id>
+        <label>HTTP VHost Port</label>
+        <type>text</type>
+        <help>HTTP virtual host port (0 = disabled).</help>
+    </field>
+    <field>
+        <id>server.vhostHTTPSPort</id>
+        <label>HTTPS VHost Port</label>
+        <type>text</type>
+        <help>HTTPS virtual host port (0 = disabled).</help>
+    </field>
+</form>

@@ -1,0 +1,10 @@
+{% if helpers.exists('OPNsense.frp.client.enabled') and OPNsense.frp.client.enabled == '1' %}
+frp_enable="YES"
+frp_mode="client"
+{% elif helpers.exists('OPNsense.frp.server.enabled') and OPNsense.frp.server.enabled == '1' %}
+frp_enable="YES"
+frp_mode="server"
+{% else %}
+frp_enable="NO"
+frp_mode=""
+{% endif %}

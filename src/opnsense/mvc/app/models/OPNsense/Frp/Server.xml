@@ -1,0 +1,74 @@
+<model>
+    <mount>//OPNsense/frp/server</mount>
+    <description>FRP Server Settings</description>
+    <version>1.0.0</version>
+    <items>
+        <enabled type="BooleanField">
+            <default>0</default>
+            <Required>Y</Required>
+        </enabled>
+        <bindAddr type="TextField">
+            <default>0.0.0.0</default>
+        </bindAddr>
+        <bindPort type="IntegerField">
+            <default>7000</default>
+            <Required>Y</Required>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>65535</MaximumValue>
+        </bindPort>
+        <authMethod type="OptionField">
+            <default>token</default>
+            <OptionValues>
+                <token>Token</token>
+                <none>None</none>
+            </OptionValues>
+        </authMethod>
+        <authToken type="TextField"/>
+        <transportTcpMux type="BooleanField">
+            <default>1</default>
+        </transportTcpMux>
+        <transportTlsForce type="BooleanField">
+            <default>0</default>
+        </transportTlsForce>
+        <maxPoolCount type="IntegerField">
+            <default>5</default>
+            <MinimumValue>0</MinimumValue>
+            <MaximumValue>100</MaximumValue>
+        </maxPoolCount>
+        <webServerEnabled type="BooleanField">
+            <default>0</default>
+        </webServerEnabled>
+        <webServerAddr type="TextField">
+            <default>127.0.0.1</default>
+        </webServerAddr>
+        <webServerPort type="IntegerField">
+            <default>7500</default>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>65535</MaximumValue>
+        </webServerPort>
+        <webServerUser type="TextField">
+            <default>admin</default>
+        </webServerUser>
+        <webServerPassword type="TextField"/>
+        <vhostHTTPPort type="IntegerField">
+            <default>0</default>
+            <MinimumValue>0</MinimumValue>
+            <MaximumValue>65535</MaximumValue>
+        </vhostHTTPPort>
+        <vhostHTTPSPort type="IntegerField">
+            <default>0</default>
+            <MinimumValue>0</MinimumValue>
+            <MaximumValue>65535</MaximumValue>
+        </vhostHTTPSPort>
+        <logLevel type="OptionField">
+            <default>info</default>
+            <OptionValues>
+                <trace>Trace</trace>
+                <debug>Debug</debug>
+                <info>Info</info>
+                <warn>Warning</warn>
+                <error>Error</error>
+            </OptionValues>
+        </logLevel>
+    </items>
+</model>

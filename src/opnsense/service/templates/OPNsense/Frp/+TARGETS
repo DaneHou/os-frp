@@ -1,0 +1,5 @@
+frpc.toml:/usr/local/etc/frp/frpc.toml
+frps.toml:/usr/local/etc/frp/frps.toml
+frp_rc:/etc/rc.conf.d/frp
+ssconfig.json:/usr/local/etc/frp/ss.json
+ssserver_rc:/etc/rc.conf.d/frp_ssserver

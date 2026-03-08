@@ -1,0 +1,58 @@
+<model>
+    <mount>//OPNsense/frp/proxy</mount>
+    <description>FRP Proxy Settings</description>
+    <version>1.0.0</version>
+    <items>
+        <proxies>
+            <proxy type="ArrayField">
+                <enabled type="BooleanField">
+                    <default>1</default>
+                    <Required>Y</Required>
+                </enabled>
+                <name type="TextField">
+                    <Required>Y</Required>
+                    <Mask>/^[a-zA-Z0-9_-]+$/</Mask>
+                    <MinimumLength>1</MinimumLength>
+                    <MaximumLength>32</MaximumLength>
+                </name>
+                <proxyType type="OptionField">
+                    <default>tcp</default>
+                    <OptionValues>
+                        <tcp>TCP</tcp>
+                        <udp>UDP</udp>
+                        <http>HTTP</http>
+                        <https>HTTPS</https>
+                        <stcp>STCP</stcp>
+                        <sudp>SUDP</sudp>
+                        <xtcp>XTCP</xtcp>
+                        <tcpmux>TCPMUX</tcpmux>
+                    </OptionValues>
+                </proxyType>
+                <localIP type="TextField">
+                    <default>127.0.0.1</default>
+                </localIP>
+                <localPort type="IntegerField">
+                    <Required>Y</Required>
+                    <MinimumValue>1</MinimumValue>
+                    <MaximumValue>65535</MaximumValue>
+                </localPort>
+                <remotePort type="IntegerField">
+                    <MinimumValue>0</MinimumValue>
+                    <MaximumValue>65535</MaximumValue>
+                </remotePort>
+                <customDomains type="TextField"/>
+                <subdomain type="TextField"/>
+                <httpUser type="TextField"/>
+                <httpPassword type="TextField"/>
+                <bandwidthLimit type="TextField"/>
+                <secretKey type="TextField"/>
+                <useCompression type="BooleanField">
+                    <default>0</default>
+                </useCompression>
+                <useEncryption type="BooleanField">
+                    <default>0</default>
+                </useEncryption>
+            </proxy>
+        </proxies>
+    </items>
+</model>

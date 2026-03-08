@@ -5,13 +5,13 @@
 
 <script>
     $(document).ready(function() {
-        mapDataToFormUI({'frm_tuning': '/api/frp/tuning/get'}).done(function() {
+        mapDataToFormUI({'frm_tuning': '/api/frp/settings/getTuning'}).done(function() {
             formatTokenizersUI();
             $('.selectpicker').selectpicker('refresh');
         });
 
         $("#saveAct").click(function(){
-            saveFormToEndpoint('/api/frp/tuning/set', 'frm_tuning', function(){
+            saveFormToEndpoint('/api/frp/settings/setTuning', 'frm_tuning', function(){
                 $("#saveAct_progress").addClass("fa fa-spinner fa-pulse");
                 ajaxCall('/api/frp/frpservice/reconfigure', {}, function(data, status) {
                     $("#saveAct_progress").removeClass("fa fa-spinner fa-pulse");

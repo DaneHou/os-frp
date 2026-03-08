@@ -5,13 +5,13 @@
 
 <script>
     $(document).ready(function() {
-        mapDataToFormUI({'frm_server': '/api/frp/server/get'}).done(function() {
+        mapDataToFormUI({'frm_server': '/api/frp/settings/getServer'}).done(function() {
             formatTokenizersUI();
             $('.selectpicker').selectpicker('refresh');
         });
 
         $("#saveAct").click(function(){
-            saveFormToEndpoint('/api/frp/server/set', 'frm_server', function(){
+            saveFormToEndpoint('/api/frp/settings/setServer', 'frm_server', function(){
                 ajaxCall('/api/frp/frpservice/reconfigure', {}, function(data, status) {
                     // Reconfigure done
                 });

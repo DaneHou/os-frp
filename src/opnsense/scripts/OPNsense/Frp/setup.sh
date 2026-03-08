@@ -4,7 +4,7 @@
 # Usage: setup.sh [frp|ssserver|all]
 
 FRP_VERSION="0.61.1"
-SS_VERSION="1.21.2"
+SS_VERSION="1.24.0"
 
 FRP_URL="https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/frp_${FRP_VERSION}_freebsd_amd64.tar.gz"
 SS_URL="https://github.com/shadowsocks/shadowsocks-rust/releases/download/v${SS_VERSION}/shadowsocks-v${SS_VERSION}.x86_64-unknown-freebsd.tar.xz"

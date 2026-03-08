@@ -20,7 +20,7 @@ FRP_ARCH=		freebsd_amd64
 FRP_URL=		https://github.com/fatedier/frp/releases/download/v$(FRP_VERSION)/frp_$(FRP_VERSION)_$(FRP_ARCH).tar.gz
 
 # Shadowsocks settings
-SS_VERSION=		1.21.2
+SS_VERSION=		1.24.0
 SS_URL=			https://github.com/shadowsocks/shadowsocks-rust/releases/download/v$(SS_VERSION)/shadowsocks-v$(SS_VERSION).x86_64-unknown-freebsd.tar.xz
 
 .PHONY: install install-plugin install-frp install-ssserver activate uninstall reinstall clean

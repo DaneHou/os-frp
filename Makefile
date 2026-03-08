@@ -90,14 +90,19 @@ install-ssserver:
 
 activate:
 	@echo "==> Activating plugin..."
-	@# Clear OPNsense caches
+	@# Validate PHP syntax
+	@php -l $(HOOKS_DIR)/frp.inc 2>&1 || true
+	@# Clear OPNsense caches (both locations)
 	@rm -f /tmp/opnsense_menu_cache.xml 2>/dev/null || true
 	@rm -f /tmp/opnsense_acl_cache.json 2>/dev/null || true
+	@rm -f /var/lib/php/tmp/opnsense_menu_cache.xml 2>/dev/null || true
 	@# Restart configd to pick up new actions
 	@service configd restart 2>/dev/null || true
+	@# Restart web GUI to flush PHP opcache and pick up menu/controllers
+	@configctl webgui restart 2>/dev/null || service php_fpm restart 2>/dev/null || true
 	@# Generate initial templates
-	@pluginctl -c frp 2>/dev/null || true
-	@echo "==> Plugin activated"
+	@pluginctl -c 2>/dev/null || true
+	@echo "==> Plugin activated. Hard-refresh your browser (Ctrl+Shift+R)."
 
 uninstall:
 	@echo "==> Uninstalling os-frp plugin..."

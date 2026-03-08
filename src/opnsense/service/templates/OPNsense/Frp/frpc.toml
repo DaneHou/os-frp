@@ -21,8 +21,8 @@ transport.tls.serverName = "{{ OPNsense.frp.client.transportTlsServerName }}"
 {% endif %}
 transport.poolCount = {{ OPNsense.frp.client.transportPoolCount }}
 
-{% if helpers.exists('OPNsense.frp.proxy.proxies.proxy') %}
-{% for proxy in helpers.toList('OPNsense.frp.proxy.proxies.proxy') %}
+{% if helpers.exists('OPNsense.frp.client.proxies.proxy') %}
+{% for proxy in helpers.toList('OPNsense.frp.client.proxies.proxy') %}
 {% if proxy.enabled == '1' %}
 
 [[proxies]]

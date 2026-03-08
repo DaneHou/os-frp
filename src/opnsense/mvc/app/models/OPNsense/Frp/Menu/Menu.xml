@@ -4,8 +4,7 @@
             <Client VisibleName="Client" url="/ui/frp/client" order="10"/>
             <Server VisibleName="Server" url="/ui/frp/server" order="20"/>
             <Proxies VisibleName="Proxies" url="/ui/frp/proxy" order="30"/>
-            <Shadowsocks VisibleName="Shadowsocks" url="/ui/frp/shadowsocks" order="40"/>
-            <Tuning VisibleName="Tuning" url="/ui/frp/tuning" order="50"/>
+            <Tuning VisibleName="Tuning" url="/ui/frp/tuning" order="40"/>
         </FRP>
     </Services>
 </menu>

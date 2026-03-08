@@ -1,15 +1,13 @@
 FRP Tunnel plugin for OPNsense
 
-Provides a GUI for managing FRP (Fast Reverse Proxy) client and server
-with optional Shadowsocks server integration. Designed for cross-border
-tunnel stability with built-in network tuning options (BBR, MTU/MSS
-clamping).
+Provides a GUI for managing FRP (Fast Reverse Proxy) client and server.
+Designed for cross-border tunnel stability with built-in network tuning
+options (BBR, MTU/MSS clamping).
 
 Features:
 - FRP Client (frpc) with full TOML v0.60+ configuration
 - FRP Server (frps) with web dashboard support
 - Proxy management (tcp, udp, http, https, stcp, xtcp, etc.)
-- Optional Shadowsocks server (ssserver-rust)
 - Network tuning: TCP BBR, MTU clamping, MSS clamping
 - Cross-border optimizations: tcpMux, heartbeat, TLS, connection pooling
 

@@ -46,20 +46,6 @@ function frp_services()
         ];
     }
 
-    $mdlSS = new \OPNsense\Frp\Shadowsocks();
-    if ((string)$mdlSS->enabled === '1') {
-        $services[] = [
-            'description' => gettext('Shadowsocks Server (FRP)'),
-            'configd' => [
-                'restart' => ['frpss restart'],
-                'start' => ['frpss start'],
-                'stop' => ['frpss stop'],
-            ],
-            'name' => 'frp_ssserver',
-            'pidfile' => '/var/run/frp_ssserver.pid',
-        ];
-    }
-
     return $services;
 }
 

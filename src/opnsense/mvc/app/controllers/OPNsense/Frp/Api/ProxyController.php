@@ -6,8 +6,8 @@ use OPNsense\Base\ApiMutableModelControllerBase;
 
 class ProxyController extends ApiMutableModelControllerBase
 {
-    protected static $internalModelName = 'proxy';
-    protected static $internalModelClass = 'OPNsense\Frp\Proxy';
+    protected static $internalModelName = 'client';
+    protected static $internalModelClass = 'OPNsense\Frp\Client';
 
     public function searchItemAction()
     {

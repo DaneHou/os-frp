@@ -1,6 +1,6 @@
 PLUGIN_NAME=	frp
 PLUGIN_VERSION=	1.0.0
-PLUGIN_COMMENT=	FRP Tunnel with optional Shadowsocks server
+PLUGIN_COMMENT=	FRP Tunnel for OPNsense
 
 PLUGIN_PREFIX=	/usr/local
 
@@ -19,13 +19,9 @@ FRP_VERSION=		0.61.1
 FRP_ARCH=		freebsd_amd64
 FRP_URL=		https://github.com/fatedier/frp/releases/download/v$(FRP_VERSION)/frp_$(FRP_VERSION)_$(FRP_ARCH).tar.gz
 
-# Shadowsocks settings
-SS_VERSION=		1.24.0
-SS_URL=			https://github.com/shadowsocks/shadowsocks-rust/releases/download/v$(SS_VERSION)/shadowsocks-v$(SS_VERSION).x86_64-unknown-freebsd.tar.xz
+.PHONY: install install-plugin install-frp activate uninstall reinstall clean
 
-.PHONY: install install-plugin install-frp install-ssserver activate uninstall reinstall clean
-
-install: install-plugin install-frp install-ssserver activate
+install: install-plugin install-frp activate
 	@echo "==> Full installation complete"
 
 install-plugin:
@@ -62,8 +58,7 @@ install-plugin:
 	@# rc.d scripts
 	@mkdir -p $(RCD_DIR)
 	@cp src/usr/local/etc/rc.d/frp $(RCD_DIR)/frp
-	@cp src/usr/local/etc/rc.d/frp_ssserver $(RCD_DIR)/frp_ssserver
-	@chmod +x $(RCD_DIR)/frp $(RCD_DIR)/frp_ssserver
+	@chmod +x $(RCD_DIR)/frp
 	@# Config and log directories
 	@mkdir -p /usr/local/etc/frp
 	@mkdir -p /var/log/frp
@@ -79,20 +74,11 @@ install-frp:
 	@rm -rf /tmp/frp-install
 	@echo "==> FRP binaries installed"
 
-install-ssserver:
-	@echo "==> Downloading shadowsocks-rust v$(SS_VERSION)..."
-	@mkdir -p /tmp/ss-install
-	@fetch -o /tmp/ss-install/ss.tar.xz $(SS_URL)
-	@cd /tmp/ss-install && xz -d ss.tar.xz && tar -xf ss.tar
-	@install -m 755 /tmp/ss-install/ssserver $(PLUGIN_PREFIX)/bin/ssserver
-	@rm -rf /tmp/ss-install
-	@echo "==> ssserver binary installed"
-
 activate:
 	@echo "==> Activating plugin..."
 	@# Validate PHP syntax
 	@php -l $(HOOKS_DIR)/frp.inc 2>&1 || true
-	@# Clear OPNsense caches (both locations)
+	@# Clear ALL OPNsense caches
 	@rm -f /tmp/opnsense_menu_cache.xml 2>/dev/null || true
 	@rm -f /tmp/opnsense_acl_cache.json 2>/dev/null || true
 	@rm -f /var/lib/php/tmp/opnsense_menu_cache.xml 2>/dev/null || true
@@ -100,7 +86,7 @@ activate:
 	@service configd restart 2>/dev/null || true
 	@# Restart web GUI to flush PHP opcache and pick up menu/controllers
 	@configctl webgui restart 2>/dev/null || service php_fpm restart 2>/dev/null || true
-	@# Generate initial templates
+	@# Generate templates
 	@pluginctl -c 2>/dev/null || true
 	@echo "==> Plugin activated. Hard-refresh your browser (Ctrl+Shift+R)."
 
@@ -108,7 +94,6 @@ uninstall:
 	@echo "==> Uninstalling os-frp plugin..."
 	@# Stop services
 	@service frp stop 2>/dev/null || true
-	@service frp_ssserver stop 2>/dev/null || true
 	@# Remove plugin files
 	@rm -rf $(CONTROLLERS_DIR)
 	@rm -rf $(MODELS_DIR)
@@ -130,11 +115,13 @@ uninstall:
 	@# Clear caches
 	@rm -f /tmp/opnsense_menu_cache.xml 2>/dev/null || true
 	@rm -f /tmp/opnsense_acl_cache.json 2>/dev/null || true
+	@rm -f /var/lib/php/tmp/opnsense_menu_cache.xml 2>/dev/null || true
 	@service configd restart 2>/dev/null || true
+	@configctl webgui restart 2>/dev/null || service php_fpm restart 2>/dev/null || true
 	@echo "==> Uninstall complete"
 
 reinstall: uninstall install
 	@echo "==> Reinstall complete"
 
 clean:
-	@rm -rf /tmp/frp-install /tmp/ss-install
+	@rm -rf /tmp/frp-install

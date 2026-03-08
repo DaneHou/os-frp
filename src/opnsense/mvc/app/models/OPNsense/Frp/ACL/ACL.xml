@@ -1,15 +1,9 @@
-<model>
-    <mount>//OPNsense/frp/acl</mount>
-    <description>FRP Tunnel ACL</description>
-    <items>
-        <ACL>
-            <page-services-frp>
-                <name>FRP Tunnel</name>
-                <patterns>
-                    <pattern>ui/frp/*</pattern>
-                    <pattern>api/frp/*</pattern>
-                </patterns>
-            </page-services-frp>
-        </ACL>
-    </items>
-</model>
+<acl>
+    <page-services-frp>
+        <name>Services: FRP Tunnel</name>
+        <patterns>
+            <pattern>ui/frp/*</pattern>
+            <pattern>api/frp/*</pattern>
+        </patterns>
+    </page-services-frp>
+</acl>

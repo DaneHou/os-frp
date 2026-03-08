@@ -1,17 +1,11 @@
-<model>
-    <mount>//OPNsense/frp/menu</mount>
-    <description>FRP Tunnel Menu</description>
-    <items>
-        <menu>
-            <Services>
-                <FRP VisibleName="FRP Tunnel" cssClass="fa fa-exchange" group="page-services-frp" order="200">
-                    <Client VisibleName="Client" url="/ui/frp/client" visibility="page-services-frp" order="10" />
-                    <Server VisibleName="Server" url="/ui/frp/server" visibility="page-services-frp" order="20" />
-                    <Proxies VisibleName="Proxies" url="/ui/frp/proxy" visibility="page-services-frp" order="30" />
-                    <Shadowsocks VisibleName="Shadowsocks" url="/ui/frp/shadowsocks" visibility="page-services-frp" order="40" />
-                    <Tuning VisibleName="Tuning" url="/ui/frp/tuning" visibility="page-services-frp" order="50" />
-                </FRP>
-            </Services>
-        </menu>
-    </items>
-</model>
+<menu>
+    <Services>
+        <FRP VisibleName="FRP Tunnel" cssClass="fa fa-exchange fa-fw" order="200">
+            <Client VisibleName="Client" url="/ui/frp/client" order="10"/>
+            <Server VisibleName="Server" url="/ui/frp/server" order="20"/>
+            <Proxies VisibleName="Proxies" url="/ui/frp/proxy" order="30"/>
+            <Shadowsocks VisibleName="Shadowsocks" url="/ui/frp/shadowsocks" order="40"/>
+            <Tuning VisibleName="Tuning" url="/ui/frp/tuning" order="50"/>
+        </FRP>
+    </Services>
+</menu>

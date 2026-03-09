@@ -19,11 +19,12 @@ get_config() {
 # Resolve OPNsense interface name to real device
 resolve_iface() {
     local iface="$1"
-    local real=$(/usr/local/bin/php -r "
-        require_once '/usr/local/etc/inc/config.inc';
-        require_once '/usr/local/etc/inc/interfaces.inc';
-        echo get_real_interface('${iface}');
-    " 2>/dev/null)
+    # Read the real device name directly from config.xml
+    local real=$(get_config "//interfaces/${iface}/if")
+    if [ -z "$real" ]; then
+        # Fallback: get interface from default route
+        real=$(route -n get default 2>/dev/null | awk '/interface:/{print $2}')
+    fi
     echo "${real:-$iface}"
 }
 

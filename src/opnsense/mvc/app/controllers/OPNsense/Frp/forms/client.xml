@@ -125,6 +125,32 @@
     </field>
     <field>
         <type>header</type>
+        <label>QUIC Settings</label>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>client.transportQuicKeepalivePeriod</id>
+        <label>QUIC Keepalive Period</label>
+        <type>text</type>
+        <help>QUIC keepalive ping interval in seconds (default: 10). Only used when transport protocol is QUIC.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>client.transportQuicMaxIdleTimeout</id>
+        <label>QUIC Max Idle Timeout</label>
+        <type>text</type>
+        <help>Max QUIC idle time in seconds before connection closes (default: 30).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>client.transportQuicMaxIncomingStreams</id>
+        <label>QUIC Max Streams</label>
+        <type>text</type>
+        <help>Max concurrent QUIC streams (default: 100000).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <type>header</type>
         <label>Network Tuning</label>
         <advanced>true</advanced>
     </field>

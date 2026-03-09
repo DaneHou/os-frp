@@ -24,22 +24,27 @@
             </OptionValues>
         </authMethod>
         <authToken type="TextField"/>
-        <transportProtocol type="OptionField">
-            <default>tcp</default>
-            <OptionValues>
-                <tcp>TCP</tcp>
-                <websocket>WebSocket</websocket>
-                <wss>WSS (WebSocket over TLS)</wss>
-                <kcp>KCP (UDP)</kcp>
-                <quic>QUIC (UDP)</quic>
-            </OptionValues>
-        </transportProtocol>
         <transportTcpMux type="BooleanField">
             <default>1</default>
         </transportTcpMux>
         <transportTlsForce type="BooleanField">
             <default>0</default>
         </transportTlsForce>
+        <transportTcpKeepalive type="IntegerField">
+            <default>60</default>
+            <MinimumValue>-1</MinimumValue>
+            <MaximumValue>86400</MaximumValue>
+        </transportTcpKeepalive>
+        <transportTcpMuxKeepaliveInterval type="IntegerField">
+            <default>30</default>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>600</MaximumValue>
+        </transportTcpMuxKeepaliveInterval>
+        <transportHeartbeatTimeout type="IntegerField">
+            <default>90</default>
+            <MinimumValue>-1</MinimumValue>
+            <MaximumValue>600</MaximumValue>
+        </transportHeartbeatTimeout>
         <maxPoolCount type="IntegerField">
             <default>5</default>
             <MinimumValue>0</MinimumValue>
@@ -91,6 +96,26 @@
             <MinimumValue>0</MinimumValue>
             <MaximumValue>65535</MaximumValue>
         </quicBindPort>
+        <transportQuicKeepalivePeriod type="IntegerField">
+            <default>10</default>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>600</MaximumValue>
+        </transportQuicKeepalivePeriod>
+        <transportQuicMaxIdleTimeout type="IntegerField">
+            <default>30</default>
+            <MinimumValue>5</MinimumValue>
+            <MaximumValue>600</MaximumValue>
+        </transportQuicMaxIdleTimeout>
+        <transportQuicMaxIncomingStreams type="IntegerField">
+            <default>100000</default>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>1000000</MaximumValue>
+        </transportQuicMaxIncomingStreams>
+        <userConnTimeout type="IntegerField">
+            <default>10</default>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>120</MaximumValue>
+        </userConnTimeout>
         <maxPortsPerClient type="IntegerField">
             <default>0</default>
             <MinimumValue>0</MinimumValue>

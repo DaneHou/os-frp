@@ -11,6 +11,9 @@ auth.token = "{{ OPNsense.frp.server.authToken }}"
 
 transport.tcpMux = {{ "true" if OPNsense.frp.server.transportTcpMux == '1' else "false" }}
 transport.tls.force = {{ "true" if OPNsense.frp.server.transportTlsForce == '1' else "false" }}
+transport.tcpKeepalive = {{ OPNsense.frp.server.transportTcpKeepalive }}
+transport.tcpMuxKeepaliveInterval = {{ OPNsense.frp.server.transportTcpMuxKeepaliveInterval }}
+transport.heartbeatTimeout = {{ OPNsense.frp.server.transportHeartbeatTimeout }}
 transport.maxPoolCount = {{ OPNsense.frp.server.maxPoolCount }}
 
 {% if OPNsense.frp.server.kcpBindPort and OPNsense.frp.server.kcpBindPort != '0' %}
@@ -18,12 +21,18 @@ kcpBindPort = {{ OPNsense.frp.server.kcpBindPort }}
 {% endif %}
 {% if OPNsense.frp.server.quicBindPort and OPNsense.frp.server.quicBindPort != '0' %}
 quicBindPort = {{ OPNsense.frp.server.quicBindPort }}
+transport.quic.keepalivePeriod = {{ OPNsense.frp.server.transportQuicKeepalivePeriod }}
+transport.quic.maxIdleTimeout = {{ OPNsense.frp.server.transportQuicMaxIdleTimeout }}
+transport.quic.maxIncomingStreams = {{ OPNsense.frp.server.transportQuicMaxIncomingStreams }}
 {% endif %}
 {% if OPNsense.frp.server.maxPortsPerClient and OPNsense.frp.server.maxPortsPerClient != '0' %}
 maxPortsPerClient = {{ OPNsense.frp.server.maxPortsPerClient }}
 {% endif %}
 {% if OPNsense.frp.server.udpPacketSize and OPNsense.frp.server.udpPacketSize != '1500' %}
 udpPacketSize = {{ OPNsense.frp.server.udpPacketSize }}
+{% endif %}
+{% if OPNsense.frp.server.userConnTimeout and OPNsense.frp.server.userConnTimeout != '10' %}
+userConnTimeout = {{ OPNsense.frp.server.userConnTimeout }}
 {% endif %}
 
 {% if OPNsense.frp.server.webServerEnabled == '1' %}

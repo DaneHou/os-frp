@@ -66,7 +66,7 @@
         <id>server.transportHeartbeatTimeout</id>
         <label>Heartbeat Timeout</label>
         <type>text</type>
-        <help>Heartbeat timeout in seconds (default: 90, -1 = auto, disabled when tcpMux is on).</help>
+        <help>Heartbeat timeout in seconds. -1 = disabled (default, recommended when TCP Mux is on). Set 90 only if TCP Mux is off.</help>
         <advanced>true</advanced>
     </field>
     <field>

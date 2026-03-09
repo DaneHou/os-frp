@@ -10,6 +10,7 @@ auth.method = "token"
 auth.token = "{{ OPNsense.frp.server.authToken }}"
 {% endif %}
 
+transport.protocol = "{{ OPNsense.frp.server.transportProtocol }}"
 transport.tcpMux = {{ "true" if OPNsense.frp.server.transportTcpMux == '1' else "false" }}
 transport.tls.force = {{ "true" if OPNsense.frp.server.transportTlsForce == '1' else "false" }}
 transport.maxPoolCount = {{ OPNsense.frp.server.maxPoolCount }}

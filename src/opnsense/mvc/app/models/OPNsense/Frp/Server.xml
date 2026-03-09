@@ -18,9 +18,9 @@
         </bindPort>
         <authMethod type="OptionField">
             <default>token</default>
+            <BlankDesc>None</BlankDesc>
             <OptionValues>
                 <token>Token</token>
-                <none>None</none>
             </OptionValues>
         </authMethod>
         <authToken type="TextField"/>

@@ -155,13 +155,6 @@
         <advanced>true</advanced>
     </field>
     <field>
-        <id>server.webServerAddr</id>
-        <label>Dashboard Address</label>
-        <type>text</type>
-        <help>Dashboard listen address (default: 127.0.0.1).</help>
-        <advanced>true</advanced>
-    </field>
-    <field>
         <id>server.webServerPort</id>
         <label>Dashboard Port</label>
         <type>text</type>

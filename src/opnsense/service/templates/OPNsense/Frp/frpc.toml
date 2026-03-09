@@ -31,6 +31,15 @@ transport.quic.maxIdleTimeout = {{ OPNsense.frp.client.transportQuicMaxIdleTimeo
 transport.quic.maxIncomingStreams = {{ OPNsense.frp.client.transportQuicMaxIncomingStreams }}
 {% endif %}
 
+{% if OPNsense.frp.client.webServerEnabled == '1' %}
+webServer.addr = "{{ OPNsense.frp.client.webServerAddr }}"
+webServer.port = {{ OPNsense.frp.client.webServerPort }}
+{% if OPNsense.frp.client.webServerUser %}
+webServer.user = "{{ OPNsense.frp.client.webServerUser }}"
+webServer.password = "{{ OPNsense.frp.client.webServerPassword }}"
+{% endif %}
+{% endif %}
+
 {% if helpers.exists('OPNsense.frp.client.proxies.proxy') %}
 {% for proxy in helpers.toList('OPNsense.frp.client.proxies.proxy') %}
 {% if proxy.enabled == '1' %}

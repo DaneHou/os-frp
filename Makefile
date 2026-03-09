@@ -15,7 +15,7 @@ HOOKS_DIR=		$(PLUGIN_PREFIX)/etc/inc/plugins.inc.d
 RCD_DIR=		$(PLUGIN_PREFIX)/etc/rc.d
 
 # FRP settings
-FRP_VERSION=		0.61.1
+FRP_VERSION=		0.67.0
 FRP_ARCH=		freebsd_amd64
 FRP_URL=		https://github.com/fatedier/frp/releases/download/v$(FRP_VERSION)/frp_$(FRP_VERSION)_$(FRP_ARCH).tar.gz
 

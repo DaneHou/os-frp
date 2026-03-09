@@ -16,7 +16,7 @@ get_config() {
     " 2>/dev/null
 }
 
-# BBR Congestion Control
+# BBR Congestion Control (system-wide — no per-connection option in FreeBSD)
 apply_bbr() {
     local enabled=$(get_config "//OPNsense/frp/client/bbrEnabled")
     if [ "$enabled" = "1" ]; then
@@ -40,14 +40,21 @@ apply_bbr() {
     fi
 }
 
-# MSS Clamping via pf
+# MSS Clamping via pf — FRP-specific rules only
 apply_mss() {
     local enabled=$(get_config "//OPNsense/frp/client/mssClampEnabled")
     if [ "$enabled" = "1" ]; then
         local mss=$(get_config "//OPNsense/frp/client/mssValue")
-        local iface=$(get_config "//OPNsense/frp/client/mssInterface")
+        local server_addr=$(get_config "//OPNsense/frp/client/serverAddr")
+        local server_port=$(get_config "//OPNsense/frp/client/serverPort")
         mss=${mss:-1260}
-        iface=${iface:-wan}
+        server_port=${server_port:-7000}
+        local iface="wan"
+
+        if [ -z "$server_addr" ]; then
+            echo "Warning: No server address configured, skipping MSS clamping"
+            return 1
+        fi
 
         # Resolve OPNsense interface name to real device
         real_iface=$(/usr/local/bin/php -r "
@@ -58,8 +65,11 @@ apply_mss() {
         " 2>/dev/null)
         real_iface=${real_iface:-$iface}
 
-        echo "Setting MSS clamp ${mss} on ${real_iface}..."
-        echo "scrub on ${real_iface} max-mss ${mss}" | pfctl -a frp_mss -f - 2>/dev/null || {
+        echo "Setting MSS clamp ${mss} on ${real_iface} for FRP traffic to ${server_addr}:${server_port}..."
+        printf "scrub on %s proto tcp to %s port %s max-mss %s\nscrub on %s proto tcp from %s port %s max-mss %s\n" \
+            "$real_iface" "$server_addr" "$server_port" "$mss" \
+            "$real_iface" "$server_addr" "$server_port" "$mss" \
+            | pfctl -a frp_mss -f - 2>/dev/null || {
             echo "Warning: Failed to set MSS clamping"
         }
     else

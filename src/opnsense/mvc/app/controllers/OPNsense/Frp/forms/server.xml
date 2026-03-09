@@ -38,73 +38,86 @@
     <field>
         <type>header</type>
         <label>Transport Settings</label>
+        <advanced>true</advanced>
     </field>
     <field>
         <id>server.transportTcpMux</id>
         <label>TCP Multiplexing</label>
         <type>checkbox</type>
         <help>Enable TCP multiplexing.</help>
+        <advanced>true</advanced>
     </field>
     <field>
         <id>server.transportTlsForce</id>
         <label>Force TLS</label>
         <type>checkbox</type>
         <help>Force clients to use TLS connections.</help>
+        <advanced>true</advanced>
     </field>
     <field>
         <id>server.maxPoolCount</id>
         <label>Max Pool Count</label>
         <type>text</type>
         <help>Maximum connection pool size per client (default: 5).</help>
+        <advanced>true</advanced>
     </field>
     <field>
         <type>header</type>
         <label>Web Dashboard</label>
+        <advanced>true</advanced>
     </field>
     <field>
         <id>server.webServerEnabled</id>
         <label>Enable Dashboard</label>
         <type>checkbox</type>
         <help>Enable the FRP web dashboard.</help>
+        <advanced>true</advanced>
     </field>
     <field>
         <id>server.webServerAddr</id>
         <label>Dashboard Address</label>
         <type>text</type>
         <help>Dashboard listen address (default: 127.0.0.1).</help>
+        <advanced>true</advanced>
     </field>
     <field>
         <id>server.webServerPort</id>
         <label>Dashboard Port</label>
         <type>text</type>
         <help>Dashboard listen port (default: 7500).</help>
+        <advanced>true</advanced>
     </field>
     <field>
         <id>server.webServerUser</id>
         <label>Dashboard Username</label>
         <type>text</type>
         <help>Dashboard login username (default: admin).</help>
+        <advanced>true</advanced>
     </field>
     <field>
         <id>server.webServerPassword</id>
         <label>Dashboard Password</label>
         <type>password</type>
         <help>Dashboard login password.</help>
+        <advanced>true</advanced>
     </field>
     <field>
         <type>header</type>
         <label>Virtual Host</label>
+        <advanced>true</advanced>
     </field>
     <field>
         <id>server.vhostHTTPPort</id>
         <label>HTTP VHost Port</label>
         <type>text</type>
-        <help>HTTP virtual host port (0 = disabled).</help>
+        <help>Port for HTTP proxy-type tunnels. When clients use http proxy type with customDomains, FRP server routes traffic based on Host header on this port (0 = disabled).</help>
+        <advanced>true</advanced>
     </field>
     <field>
         <id>server.vhostHTTPSPort</id>
         <label>HTTPS VHost Port</label>
         <type>text</type>
-        <help>HTTPS virtual host port (0 = disabled).</help>
+        <help>Port for HTTPS proxy-type tunnels. When clients use https proxy type with customDomains, FRP server routes traffic based on SNI on this port (0 = disabled).</help>
+        <advanced>true</advanced>
     </field>
 </form>

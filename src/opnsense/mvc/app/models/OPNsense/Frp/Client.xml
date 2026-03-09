@@ -72,6 +72,21 @@
             <MaximumValue>86400</MaximumValue>
         </transportDialServerKeepalive>
         <transportProxyURL type="TextField"/>
+        <transportQuicKeepalivePeriod type="IntegerField">
+            <default>10</default>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>600</MaximumValue>
+        </transportQuicKeepalivePeriod>
+        <transportQuicMaxIdleTimeout type="IntegerField">
+            <default>30</default>
+            <MinimumValue>5</MinimumValue>
+            <MaximumValue>600</MaximumValue>
+        </transportQuicMaxIdleTimeout>
+        <transportQuicMaxIncomingStreams type="IntegerField">
+            <default>100000</default>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>1000000</MaximumValue>
+        </transportQuicMaxIncomingStreams>
         <loginFailExit type="BooleanField">
             <default>0</default>
         </loginFailExit>

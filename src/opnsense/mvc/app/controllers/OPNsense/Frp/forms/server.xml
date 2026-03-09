@@ -49,6 +49,27 @@
         <advanced>true</advanced>
     </field>
     <field>
+        <id>server.transportTcpKeepalive</id>
+        <label>TCP Keepalive</label>
+        <type>text</type>
+        <help>TCP keepalive interval in seconds for frpc connections (default: 60, -1 to disable). Lower values prevent GFW from killing idle tunnels.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>server.transportTcpMuxKeepaliveInterval</id>
+        <label>TCP Mux Keepalive Interval</label>
+        <type>text</type>
+        <help>Server-side TCP Mux keepalive interval in seconds (default: 30). Should match client setting.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>server.transportHeartbeatTimeout</id>
+        <label>Heartbeat Timeout</label>
+        <type>text</type>
+        <help>Heartbeat timeout in seconds (default: 90, -1 = auto, disabled when tcpMux is on).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
         <id>server.maxPoolCount</id>
         <label>Max Pool Count</label>
         <type>text</type>
@@ -71,6 +92,32 @@
     </field>
     <field>
         <type>header</type>
+        <label>QUIC Settings</label>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>server.transportQuicKeepalivePeriod</id>
+        <label>QUIC Keepalive Period</label>
+        <type>text</type>
+        <help>QUIC keepalive ping interval in seconds (default: 10). Only used when QUIC Bind Port is set.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>server.transportQuicMaxIdleTimeout</id>
+        <label>QUIC Max Idle Timeout</label>
+        <type>text</type>
+        <help>Max QUIC idle time in seconds before connection closes (default: 30).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>server.transportQuicMaxIncomingStreams</id>
+        <label>QUIC Max Streams</label>
+        <type>text</type>
+        <help>Max concurrent QUIC streams (default: 100000).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <type>header</type>
         <label>Resource Limits</label>
         <advanced>true</advanced>
     </field>
@@ -86,6 +133,13 @@
         <label>UDP Packet Size</label>
         <type>text</type>
         <help>UDP packet size in bytes (default: 1500, range: 500-9000).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>server.userConnTimeout</id>
+        <label>User Connection Timeout</label>
+        <type>text</type>
+        <help>Max time in seconds to wait for a work connection from client (default: 10). Increase for high-latency cross-border links.</help>
         <advanced>true</advanced>
     </field>
     <field>

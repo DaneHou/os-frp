@@ -25,6 +25,11 @@ transport.dialServerKeepalive = {{ OPNsense.frp.client.transportDialServerKeepal
 {% if OPNsense.frp.client.transportProxyURL %}
 transport.proxyURL = "{{ OPNsense.frp.client.transportProxyURL }}"
 {% endif %}
+{% if OPNsense.frp.client.transportProtocol == 'quic' %}
+transport.quic.keepalivePeriod = {{ OPNsense.frp.client.transportQuicKeepalivePeriod }}
+transport.quic.maxIdleTimeout = {{ OPNsense.frp.client.transportQuicMaxIdleTimeout }}
+transport.quic.maxIncomingStreams = {{ OPNsense.frp.client.transportQuicMaxIncomingStreams }}
+{% endif %}
 
 {% if helpers.exists('OPNsense.frp.client.proxies.proxy') %}
 {% for proxy in helpers.toList('OPNsense.frp.client.proxies.proxy') %}

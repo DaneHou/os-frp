@@ -3,6 +3,7 @@
         <FRP VisibleName="FRP Tunnel" cssClass="fa fa-exchange fa-fw" order="200">
             <Client VisibleName="Client" url="/ui/frp/client" order="10"/>
             <Server VisibleName="Server" url="/ui/frp/server" order="20"/>
+            <Monitor VisibleName="Monitor" url="/ui/frp/monitor" order="30"/>
             <Logs VisibleName="Logs" url="/ui/frp/logs" order="50"/>
         </FRP>
     </Services>

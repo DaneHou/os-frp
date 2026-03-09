@@ -49,6 +49,19 @@ function frp_services()
     return $services;
 }
 
+function frp_cron()
+{
+    return [
+        [
+            'description' => 'FRP Traffic Collector',
+            'origin' => 'frp',
+            'freq' => '1',
+            'autocron' => '1',
+            'command' => '/usr/local/bin/configctl frp collect_traffic',
+        ],
+    ];
+}
+
 function frp_syslog()
 {
     $logfacilities = [];

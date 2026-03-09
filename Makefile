@@ -46,6 +46,7 @@ install-plugin:
 	@mkdir -p $(SCRIPTS_DIR)
 	@cp src/opnsense/scripts/OPNsense/Frp/*.sh $(SCRIPTS_DIR)/
 	@chmod +x $(SCRIPTS_DIR)/*.sh
+	@cp src/opnsense/scripts/OPNsense/Frp/*.php $(SCRIPTS_DIR)/ 2>/dev/null || true
 	@# Templates
 	@mkdir -p $(TEMPLATES_DIR)
 	@cp src/opnsense/service/templates/OPNsense/Frp/* $(TEMPLATES_DIR)/
@@ -62,6 +63,7 @@ install-plugin:
 	@# Config and log directories
 	@mkdir -p /usr/local/etc/frp
 	@mkdir -p /var/log/frp
+	@mkdir -p /var/db/frp
 	@echo "==> Plugin files installed"
 
 install-frp:

@@ -111,6 +111,19 @@
             <MinimumValue>536</MinimumValue>
             <MaximumValue>1460</MaximumValue>
         </mssValue>
+        <webServerEnabled type="BooleanField">
+            <default>0</default>
+        </webServerEnabled>
+        <webServerAddr type="TextField">
+            <default>127.0.0.1</default>
+        </webServerAddr>
+        <webServerPort type="IntegerField">
+            <default>7400</default>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>65535</MaximumValue>
+        </webServerPort>
+        <webServerUser type="TextField"/>
+        <webServerPassword type="TextField"/>
         <proxies>
             <proxy type="ArrayField">
                 <enabled type="BooleanField">

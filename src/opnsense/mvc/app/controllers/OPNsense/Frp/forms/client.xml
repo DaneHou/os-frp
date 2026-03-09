@@ -151,6 +151,46 @@
     </field>
     <field>
         <type>header</type>
+        <label>Admin Dashboard</label>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>client.webServerEnabled</id>
+        <label>Enable Admin Dashboard</label>
+        <type>checkbox</type>
+        <help>Enable the FRP client admin dashboard (webServer). Required for traffic monitoring.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>client.webServerAddr</id>
+        <label>Dashboard Listen Address</label>
+        <type>text</type>
+        <help>Address for the admin dashboard to listen on (default: 127.0.0.1).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>client.webServerPort</id>
+        <label>Dashboard Port</label>
+        <type>text</type>
+        <help>Port for the admin dashboard (default: 7400).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>client.webServerUser</id>
+        <label>Dashboard Username</label>
+        <type>text</type>
+        <help>Username for dashboard authentication (optional).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>client.webServerPassword</id>
+        <label>Dashboard Password</label>
+        <type>password</type>
+        <help>Password for dashboard authentication (optional).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <type>header</type>
         <label>Network Tuning</label>
         <advanced>true</advanced>
     </field>

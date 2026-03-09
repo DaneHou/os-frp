@@ -4,7 +4,6 @@
             <Client VisibleName="Client" url="/ui/frp/client" order="10"/>
             <Server VisibleName="Server" url="/ui/frp/server" order="20"/>
             <Proxies VisibleName="Proxies" url="/ui/frp/proxy" order="30"/>
-            <Tuning VisibleName="Tuning" url="/ui/frp/tuning" order="40"/>
             <Logs VisibleName="Logs" url="/ui/frp/logs" order="50"/>
         </FRP>
     </Services>

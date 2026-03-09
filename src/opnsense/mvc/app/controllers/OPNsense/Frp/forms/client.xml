@@ -87,4 +87,32 @@
         <type>text</type>
         <help>Number of connections to pool (default: 5).</help>
     </field>
+    <field>
+        <type>header</type>
+        <label>Advanced (Network Tuning)</label>
+    </field>
+    <field>
+        <id>client.bbrEnabled</id>
+        <label>Enable BBR</label>
+        <type>checkbox</type>
+        <help>Enable TCP BBR congestion control (recommended for cross-border tunnels).</help>
+    </field>
+    <field>
+        <id>client.mssClampEnabled</id>
+        <label>Enable MSS Clamping</label>
+        <type>checkbox</type>
+        <help>Enable TCP MSS clamping via pf scrub rules to avoid fragmentation.</help>
+    </field>
+    <field>
+        <id>client.mssValue</id>
+        <label>MSS Value</label>
+        <type>text</type>
+        <help>Maximum Segment Size in bytes (default: 1260, range: 536-1460).</help>
+    </field>
+    <field>
+        <id>client.mssInterface</id>
+        <label>MSS Interface</label>
+        <type>dropdown</type>
+        <help>Interface to apply MSS clamping on.</help>
+    </field>
 </form>

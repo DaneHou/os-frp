@@ -1,15 +1,14 @@
 #!/bin/sh
 
-# Apply network tuning settings (BBR, MTU clamping, MSS clamping)
-# Reads settings from OPNsense config.xml
+# Apply network tuning settings (BBR, MSS clamping)
+# Reads settings from OPNsense config.xml (Client model)
 # Idempotent - safe to run multiple times
 
 CONFIG_XML="/conf/config.xml"
 
-# Helper to read config values using xmlstarlet or a simple grep approach
+# Helper to read config values using php
 get_config() {
     local path="$1"
-    # Use php to read from config.xml reliably
     /usr/local/bin/php -r "
         \$xml = simplexml_load_file('${CONFIG_XML}');
         \$node = \$xml->xpath('${path}');
@@ -19,7 +18,7 @@ get_config() {
 
 # BBR Congestion Control
 apply_bbr() {
-    local enabled=$(get_config "//OPNsense/frp/tuning/bbrEnabled")
+    local enabled=$(get_config "//OPNsense/frp/client/bbrEnabled")
     if [ "$enabled" = "1" ]; then
         echo "Enabling TCP BBR..."
         # Load BBR kernel module if not loaded
@@ -41,37 +40,12 @@ apply_bbr() {
     fi
 }
 
-# MTU Clamping
-apply_mtu() {
-    local enabled=$(get_config "//OPNsense/frp/tuning/mtuClampEnabled")
-    if [ "$enabled" = "1" ]; then
-        local mtu=$(get_config "//OPNsense/frp/tuning/mtuValue")
-        local iface=$(get_config "//OPNsense/frp/tuning/mtuInterface")
-        mtu=${mtu:-1300}
-        iface=${iface:-wan}
-
-        # Resolve OPNsense interface name to real device
-        real_iface=$(/usr/local/bin/php -r "
-            require_once 'config.inc';
-            require_once 'interfaces.inc';
-            \$iface = get_real_interface('${iface}');
-            echo \$iface;
-        " 2>/dev/null)
-        real_iface=${real_iface:-$iface}
-
-        echo "Setting MTU ${mtu} on ${real_iface}..."
-        ifconfig "$real_iface" mtu "$mtu" 2>/dev/null || {
-            echo "Warning: Failed to set MTU on ${real_iface}"
-        }
-    fi
-}
-
 # MSS Clamping via pf
 apply_mss() {
-    local enabled=$(get_config "//OPNsense/frp/tuning/mssClampEnabled")
+    local enabled=$(get_config "//OPNsense/frp/client/mssClampEnabled")
     if [ "$enabled" = "1" ]; then
-        local mss=$(get_config "//OPNsense/frp/tuning/mssValue")
-        local iface=$(get_config "//OPNsense/frp/tuning/mssInterface")
+        local mss=$(get_config "//OPNsense/frp/client/mssValue")
+        local iface=$(get_config "//OPNsense/frp/client/mssInterface")
         mss=${mss:-1260}
         iface=${iface:-wan}
 
@@ -96,6 +70,5 @@ apply_mss() {
 
 echo "Applying FRP network tuning..."
 apply_bbr
-apply_mtu
 apply_mss
 echo "Tuning complete."

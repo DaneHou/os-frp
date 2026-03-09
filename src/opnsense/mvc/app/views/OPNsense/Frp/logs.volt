@@ -66,6 +66,7 @@
     }
 
     $(document).ready(function() {
+        updateServiceControlUI('frp');
         loadLogFiles();
 
         // Auto-refresh every 5 seconds

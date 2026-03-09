@@ -5,6 +5,8 @@
 
 <script>
     $(document).ready(function() {
+        updateServiceControlUI('frp');
+
         $("#grid-proxies").UIBootgrid({
             search:'/api/frp/proxy/searchItem',
             get:'/api/frp/proxy/getItem/',

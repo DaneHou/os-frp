@@ -75,14 +75,6 @@
             <MinimumValue>536</MinimumValue>
             <MaximumValue>1460</MaximumValue>
         </mssValue>
-        <mssInterface type="InterfaceField">
-            <Required>N</Required>
-            <default>wan</default>
-            <AllowDynamic>1</AllowDynamic>
-            <filters>
-                <enable>/^1$/</enable>
-            </filters>
-        </mssInterface>
         <proxies>
             <proxy type="ArrayField">
                 <enabled type="BooleanField">

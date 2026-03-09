@@ -42,77 +42,89 @@
         <help>FRP client logging verbosity.</help>
     </field>
     <field>
+        <id>client.showAdvanced</id>
+        <label>Show Advanced Settings</label>
+        <type>checkbox</type>
+        <help>Show transport and network tuning options.</help>
+    </field>
+    <field>
         <type>header</type>
         <label>Transport Settings</label>
+        <style>advanced_fields</style>
     </field>
     <field>
         <id>client.transportTcpMux</id>
         <label>TCP Multiplexing</label>
         <type>checkbox</type>
         <help>Enable TCP multiplexing (recommended for cross-border tunnels).</help>
+        <style>advanced_fields</style>
     </field>
     <field>
         <id>client.transportTcpMuxKeepaliveInterval</id>
         <label>TCP Mux Keepalive Interval</label>
         <type>text</type>
         <help>TCP mux keepalive interval in seconds (default: 10).</help>
+        <style>advanced_fields</style>
     </field>
     <field>
         <id>client.transportHeartbeatInterval</id>
         <label>Heartbeat Interval</label>
         <type>text</type>
         <help>Heartbeat interval in seconds (default: 10).</help>
+        <style>advanced_fields</style>
     </field>
     <field>
         <id>client.transportHeartbeatTimeout</id>
         <label>Heartbeat Timeout</label>
         <type>text</type>
         <help>Heartbeat timeout in seconds (default: 30).</help>
+        <style>advanced_fields</style>
     </field>
     <field>
         <id>client.transportTlsEnable</id>
         <label>Enable TLS</label>
         <type>checkbox</type>
         <help>Enable TLS for server connection.</help>
+        <style>advanced_fields</style>
     </field>
     <field>
         <id>client.transportTlsServerName</id>
         <label>TLS Server Name</label>
         <type>text</type>
         <help>Optional TLS SNI server name.</help>
+        <style>advanced_fields</style>
     </field>
     <field>
         <id>client.transportPoolCount</id>
         <label>Connection Pool Size</label>
         <type>text</type>
         <help>Number of connections to pool (default: 5).</help>
+        <style>advanced_fields</style>
     </field>
     <field>
         <type>header</type>
-        <label>Advanced (Network Tuning)</label>
+        <label>Network Tuning</label>
+        <style>advanced_fields</style>
     </field>
     <field>
         <id>client.bbrEnabled</id>
         <label>Enable BBR</label>
         <type>checkbox</type>
-        <help>Enable TCP BBR congestion control (recommended for cross-border tunnels).</help>
+        <help>Enables BBR congestion control. WARNING: This is a system-wide kernel setting that affects ALL TCP connections, not just FRP.</help>
+        <style>advanced_fields</style>
     </field>
     <field>
         <id>client.mssClampEnabled</id>
         <label>Enable MSS Clamping</label>
         <type>checkbox</type>
-        <help>Enable TCP MSS clamping via pf scrub rules to avoid fragmentation.</help>
+        <help>Clamps TCP MSS for FRP tunnel traffic only (to/from the configured FRP server). WARNING: Requires a valid Server Address above.</help>
+        <style>advanced_fields</style>
     </field>
     <field>
         <id>client.mssValue</id>
         <label>MSS Value</label>
         <type>text</type>
         <help>Maximum Segment Size in bytes (default: 1260, range: 536-1460).</help>
-    </field>
-    <field>
-        <id>client.mssInterface</id>
-        <label>MSS Interface</label>
-        <type>dropdown</type>
-        <help>Interface to apply MSS clamping on.</help>
+        <style>advanced_fields</style>
     </field>
 </form>

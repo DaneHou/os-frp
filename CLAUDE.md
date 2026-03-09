@@ -71,7 +71,7 @@ make activate
 2. Update `FRP_VERSION` in `setup.sh`
 
 ### Binary versions
-- FRP: v0.61.1 (freebsd_amd64)
+- FRP: v0.67.0 (freebsd_amd64)
 
 ### Testing checklist
 1. `make install` → plugin appears under Services > FRP Tunnel

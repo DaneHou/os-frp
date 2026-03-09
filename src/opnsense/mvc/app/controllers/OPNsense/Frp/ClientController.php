@@ -10,5 +10,6 @@ class ClientController extends IndexController
     {
         $this->view->pick('OPNsense/Frp/client');
         $this->view->clientForm = $this->getForm('client');
+        $this->view->proxyForm = $this->getForm('proxy');
     }
 }

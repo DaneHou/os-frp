@@ -6,12 +6,6 @@
         <help>Enable or disable the FRP server (frps).</help>
     </field>
     <field>
-        <id>server.bindAddr</id>
-        <label>Bind Address</label>
-        <type>text</type>
-        <help>Address to bind on (default: 0.0.0.0).</help>
-    </field>
-    <field>
         <id>server.bindPort</id>
         <label>Bind Port</label>
         <type>text</type>

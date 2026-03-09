@@ -24,8 +24,6 @@ Follows **os-proxygateway** (`/home/dianxun/synology/github/os-proxygateway`) pa
 ### Model mounts (config.xml paths)
 - `//OPNsense/frp/client` → Client.xml (includes proxies ArrayField)
 - `//OPNsense/frp/server` → Server.xml
-- `//OPNsense/frp/tuning` → Tuning.xml
-
 ### Template engine paths
 Templates use dot notation matching config.xml structure:
 - `OPNsense.frp.client.enabled` → `<OPNsense><frp><client><enabled>`
@@ -38,8 +36,6 @@ GET  /api/frp/settings/getClient    → SettingsController::getClientAction()
 POST /api/frp/settings/setClient    → SettingsController::setClientAction()
 GET  /api/frp/settings/getServer    → SettingsController::getServerAction()
 POST /api/frp/settings/setServer    → SettingsController::setServerAction()
-GET  /api/frp/settings/getTuning    → SettingsController::getTuningAction()
-POST /api/frp/settings/setTuning    → SettingsController::setTuningAction()
 POST /api/frp/proxy/searchItem      → ProxyController::searchItemAction()
 POST /api/frp/proxy/addItem         → ProxyController::addItemAction()
 POST /api/frp/service/reconfigure   → ServiceController::reconfigureAction()
@@ -83,4 +79,4 @@ make activate
 3. Server page: save settings → verify `/usr/local/etc/frp/frps.toml` is valid TOML
 4. Proxy page: add entries → verify `[[proxies]]` blocks in frpc.toml
 5. `configctl frp start` → frpc/frps running, `configctl frp status` confirms
-6. Tuning page: enable BBR → `sysctl net.inet.tcp.functions_default` returns `bbr`
+6. Client page Advanced section: enable BBR → `sysctl net.inet.tcp.functions_default` returns `bbr`

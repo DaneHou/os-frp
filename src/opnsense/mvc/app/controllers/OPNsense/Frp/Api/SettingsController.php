@@ -132,36 +132,4 @@ class SettingsController extends ApiMutableModelControllerBase
         return ['status' => 'failed'];
     }
 
-    // --- Tuning settings ---
-
-    public function getTuningAction()
-    {
-        $mdl = new \OPNsense\Frp\Tuning();
-        return ['tuning' => $mdl->getNodes()];
-    }
-
-    public function setTuningAction()
-    {
-        $result = ['result' => 'failed'];
-        if ($this->request->isPost()) {
-            $mdl = new \OPNsense\Frp\Tuning();
-            $post = $this->request->getPost('tuning');
-            if ($post) {
-                $mdl->setNodes($post);
-            }
-            $valMsgs = $mdl->performValidation();
-            foreach ($valMsgs as $msg) {
-                if (!isset($result['validations'])) {
-                    $result['validations'] = [];
-                }
-                $result['validations']['tuning.' . $msg->getField()] = $msg->getMessage();
-            }
-            if (empty($result['validations'])) {
-                $mdl->serializeToConfig();
-                Config::getInstance()->save();
-                $result = ['result' => 'saved'];
-            }
-        }
-        return $result;
-    }
 }

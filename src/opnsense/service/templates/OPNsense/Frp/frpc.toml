@@ -3,8 +3,7 @@ serverAddr = "{{ OPNsense.frp.client.serverAddr }}"
 serverPort = {{ OPNsense.frp.client.serverPort }}
 loginFailExit = {{ "true" if OPNsense.frp.client.loginFailExit == '1' else "false" }}
 log.level = "{{ OPNsense.frp.client.logLevel }}"
-log.to = "/var/log/frp/frpc.log"
-log.maxDays = 7
+log.to = "console"
 
 {% if OPNsense.frp.client.authMethod == 'token' %}
 auth.method = "token"

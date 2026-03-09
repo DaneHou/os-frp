@@ -25,7 +25,7 @@
 
     function loadLogFiles() {
         ajaxGet('/api/frp/settings/getLogFiles', {}, function(data, status) {
-            if (data.status === 'ok') {
+            if (data && data.status === 'ok' && data.files && data.files.length > 0) {
                 var sel = $('#log-filter');
                 sel.empty();
                 $.each(data.files, function(i, name) {
@@ -33,7 +33,11 @@
                 });
                 sel.selectpicker('refresh');
                 refreshLogs();
+            } else {
+                $('#log-output').text('No log files found. Start the FRP service first, then refresh.');
             }
+        }).fail(function() {
+            $('#log-output').text('Failed to load log files. Check API endpoint.');
         });
     }
 
@@ -43,9 +47,9 @@
         if (!name) return;
 
         ajaxGet('/api/frp/settings/getLogs', {name: name, lines: lines}, function(data, status) {
-            if (data.status === 'ok') {
-                var output = $('#log-output');
-                if (data.lines.length === 0) {
+            var output = $('#log-output');
+            if (data && data.status === 'ok') {
+                if (!data.lines || data.lines.length === 0) {
                     output.text('(no log entries)');
                 } else {
                     output.text(data.lines.join('\n'));
@@ -53,7 +57,11 @@
                 if (autoScroll) {
                     output.scrollTop(output[0].scrollHeight);
                 }
+            } else {
+                output.text('Failed to read log file.');
             }
+        }).fail(function() {
+            $('#log-output').text('Failed to fetch logs.');
         });
     }
 

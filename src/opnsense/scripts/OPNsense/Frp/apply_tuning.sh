@@ -19,7 +19,7 @@ get_config() {
 # Resolve OPNsense interface name to real device
 resolve_iface() {
     local iface="$1"
-    local real=$(/usr/local/bin/php -r "
+    local real=$(/usr/local/bin/php -d "include_path=.:/usr/local/etc/inc:/usr/local/www:/usr/local/opnsense/mvc:/usr/local/share/php" -r "
         require_once 'config.inc';
         require_once 'interfaces.inc';
         \$iface = get_real_interface('${iface}');

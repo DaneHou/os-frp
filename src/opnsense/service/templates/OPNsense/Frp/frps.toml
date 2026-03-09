@@ -2,8 +2,7 @@
 bindAddr = "{{ OPNsense.frp.server.bindAddr }}"
 bindPort = {{ OPNsense.frp.server.bindPort }}
 log.level = "{{ OPNsense.frp.server.logLevel }}"
-log.to = "/var/log/frp/frps.log"
-log.maxDays = 7
+log.to = "console"
 
 {% if OPNsense.frp.server.authMethod == 'token' %}
 auth.method = "token"

@@ -55,7 +55,12 @@ frp_start()
     fi
 
     echo "Starting FRP (${frp_mode})..."
-    /usr/sbin/daemon -p "$pidfile" -f "$binary" -c "$config"
+    if [ "$frp_mode" = "client" ]; then
+        local logfile="${logdir}/frpc.log"
+    else
+        local logfile="${logdir}/frps.log"
+    fi
+    /usr/sbin/daemon -p "$pidfile" -o "$logfile" -f "$binary" -c "$config"
 }
 
 frp_stop()

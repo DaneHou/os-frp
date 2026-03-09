@@ -44,7 +44,7 @@
         <id>server.transportProtocol</id>
         <label>Transport Protocol</label>
         <type>dropdown</type>
-        <help>Transport protocol. WSS (WebSocket over TLS) makes FRP traffic look like normal HTTPS, harder for GFW to detect. Both client and server must match.</help>
+        <help>Transport protocol. WSS/WebSocket disguise FRP as HTTP(S) traffic. KCP and QUIC use UDP for better cross-border performance. Client and server must match.</help>
         <advanced>true</advanced>
     </field>
     <field>
@@ -66,6 +66,39 @@
         <label>Max Pool Count</label>
         <type>text</type>
         <help>Maximum connection pool size per client (default: 5).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>server.kcpBindPort</id>
+        <label>KCP Bind Port</label>
+        <type>text</type>
+        <help>UDP port for KCP protocol (0 = disabled). Must match client KCP transport port.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>server.quicBindPort</id>
+        <label>QUIC Bind Port</label>
+        <type>text</type>
+        <help>UDP port for QUIC protocol (0 = disabled). Must match client QUIC transport port.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <type>header</type>
+        <label>Resource Limits</label>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>server.maxPortsPerClient</id>
+        <label>Max Ports Per Client</label>
+        <type>text</type>
+        <help>Maximum number of ports a single client can proxy (0 = unlimited).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>server.udpPacketSize</id>
+        <label>UDP Packet Size</label>
+        <type>text</type>
+        <help>UDP packet size in bytes (default: 1500, range: 500-9000).</help>
         <advanced>true</advanced>
     </field>
     <field>

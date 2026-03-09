@@ -21,6 +21,11 @@ transport.tls.enable = {{ "true" if OPNsense.frp.client.transportTlsEnable == '1
 transport.tls.serverName = "{{ OPNsense.frp.client.transportTlsServerName }}"
 {% endif %}
 transport.poolCount = {{ OPNsense.frp.client.transportPoolCount }}
+transport.dialServerTimeout = {{ OPNsense.frp.client.transportDialServerTimeout }}
+transport.dialServerKeepalive = {{ OPNsense.frp.client.transportDialServerKeepalive }}
+{% if OPNsense.frp.client.transportProxyURL %}
+transport.proxyURL = "{{ OPNsense.frp.client.transportProxyURL }}"
+{% endif %}
 
 {% if helpers.exists('OPNsense.frp.client.proxies.proxy') %}
 {% for proxy in helpers.toList('OPNsense.frp.client.proxies.proxy') %}

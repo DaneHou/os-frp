@@ -15,6 +15,19 @@ transport.tcpMux = {{ "true" if OPNsense.frp.server.transportTcpMux == '1' else 
 transport.tls.force = {{ "true" if OPNsense.frp.server.transportTlsForce == '1' else "false" }}
 transport.maxPoolCount = {{ OPNsense.frp.server.maxPoolCount }}
 
+{% if OPNsense.frp.server.kcpBindPort and OPNsense.frp.server.kcpBindPort != '0' %}
+kcpBindPort = {{ OPNsense.frp.server.kcpBindPort }}
+{% endif %}
+{% if OPNsense.frp.server.quicBindPort and OPNsense.frp.server.quicBindPort != '0' %}
+quicBindPort = {{ OPNsense.frp.server.quicBindPort }}
+{% endif %}
+{% if OPNsense.frp.server.maxPortsPerClient and OPNsense.frp.server.maxPortsPerClient != '0' %}
+maxPortsPerClient = {{ OPNsense.frp.server.maxPortsPerClient }}
+{% endif %}
+{% if OPNsense.frp.server.udpPacketSize and OPNsense.frp.server.udpPacketSize != '1500' %}
+udpPacketSize = {{ OPNsense.frp.server.udpPacketSize }}
+{% endif %}
+
 {% if OPNsense.frp.server.webServerEnabled == '1' %}
 webServer.addr = "{{ OPNsense.frp.server.webServerAddr }}"
 webServer.port = {{ OPNsense.frp.server.webServerPort }}

@@ -50,7 +50,7 @@
         <id>client.transportProtocol</id>
         <label>Transport Protocol</label>
         <type>dropdown</type>
-        <help>Transport protocol. WSS (WebSocket over TLS) makes FRP traffic look like normal HTTPS, harder for GFW to detect.</help>
+        <help>Transport protocol. WSS/WebSocket disguise FRP as HTTP(S) traffic. KCP and QUIC use UDP for better cross-border performance.</help>
         <advanced>true</advanced>
     </field>
     <field>
@@ -100,6 +100,27 @@
         <label>Connection Pool Size</label>
         <type>text</type>
         <help>Number of connections to pool (default: 5).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>client.transportDialServerTimeout</id>
+        <label>Connection Timeout</label>
+        <type>text</type>
+        <help>Timeout in seconds for dialing to the server (default: 10, range: 1-120).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>client.transportDialServerKeepalive</id>
+        <label>Keepalive Interval</label>
+        <type>text</type>
+        <help>Keepalive interval in seconds for the connection to the server (default: 7200, -1 to disable).</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>client.transportProxyURL</id>
+        <label>Proxy URL</label>
+        <type>text</type>
+        <help>Connect to FRP server through an upstream proxy. Format: http://host:port or socks5://host:port.</help>
         <advanced>true</advanced>
     </field>
     <field>

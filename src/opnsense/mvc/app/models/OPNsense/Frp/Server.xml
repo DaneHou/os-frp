@@ -28,7 +28,10 @@
             <default>tcp</default>
             <OptionValues>
                 <tcp>TCP</tcp>
+                <websocket>WebSocket</websocket>
                 <wss>WSS (WebSocket over TLS)</wss>
+                <kcp>KCP (UDP)</kcp>
+                <quic>QUIC (UDP)</quic>
             </OptionValues>
         </transportProtocol>
         <transportTcpMux type="BooleanField">
@@ -78,6 +81,26 @@
             <MinimumValue>536</MinimumValue>
             <MaximumValue>1460</MaximumValue>
         </mssValue>
+        <kcpBindPort type="IntegerField">
+            <default>0</default>
+            <MinimumValue>0</MinimumValue>
+            <MaximumValue>65535</MaximumValue>
+        </kcpBindPort>
+        <quicBindPort type="IntegerField">
+            <default>0</default>
+            <MinimumValue>0</MinimumValue>
+            <MaximumValue>65535</MaximumValue>
+        </quicBindPort>
+        <maxPortsPerClient type="IntegerField">
+            <default>0</default>
+            <MinimumValue>0</MinimumValue>
+            <MaximumValue>65535</MaximumValue>
+        </maxPortsPerClient>
+        <udpPacketSize type="IntegerField">
+            <default>1500</default>
+            <MinimumValue>500</MinimumValue>
+            <MaximumValue>9000</MaximumValue>
+        </udpPacketSize>
         <logLevel type="OptionField">
             <default>info</default>
             <OptionValues>

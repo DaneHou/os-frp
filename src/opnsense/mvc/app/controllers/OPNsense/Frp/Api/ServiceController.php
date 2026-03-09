@@ -19,9 +19,7 @@ class ServiceController extends ApiMutableServiceControllerBase
     {
         if ($this->request->isPost()) {
             $backend = new \OPNsense\Core\Backend();
-            // Generate template configs
             $backend->configdRun('template reload OPNsense/Frp');
-            // Restart FRP service
             $backend->configdRun('frp reconfigure');
             return ['status' => 'ok'];
         }
@@ -38,9 +36,9 @@ class ServiceController extends ApiMutableServiceControllerBase
             $backend = new \OPNsense\Core\Backend();
             $backend->configdRun('template reload OPNsense/Frp');
             $backend->configdRun('frp start');
-            return ['result' => 'ok'];
+            return ['status' => 'ok'];
         }
-        return ['result' => 'failed'];
+        return ['status' => 'failed'];
     }
 
     /**
@@ -52,9 +50,24 @@ class ServiceController extends ApiMutableServiceControllerBase
         if ($this->request->isPost()) {
             $backend = new \OPNsense\Core\Backend();
             $backend->configdRun('frp stop');
-            return ['result' => 'ok'];
+            return ['status' => 'ok'];
         }
-        return ['result' => 'failed'];
+        return ['status' => 'failed'];
+    }
+
+    /**
+     * Restart FRP service
+     * @return array
+     */
+    public function restartAction()
+    {
+        if ($this->request->isPost()) {
+            $backend = new \OPNsense\Core\Backend();
+            $backend->configdRun('template reload OPNsense/Frp');
+            $backend->configdRun('frp restart');
+            return ['status' => 'ok'];
+        }
+        return ['status' => 'failed'];
     }
 
     /**
@@ -66,8 +79,8 @@ class ServiceController extends ApiMutableServiceControllerBase
         $backend = new \OPNsense\Core\Backend();
         $response = trim($backend->configdRun('frp status'));
         if (strpos($response, 'is running') !== false) {
-            return ['result' => 'running'];
+            return ['status' => 'running'];
         }
-        return ['result' => 'stopped'];
+        return ['status' => 'stopped'];
     }
 }

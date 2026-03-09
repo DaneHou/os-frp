@@ -9,6 +9,7 @@ CONTROLLERS_DIR=	$(PLUGIN_PREFIX)/opnsense/mvc/app/controllers/OPNsense/Frp
 MODELS_DIR=		$(PLUGIN_PREFIX)/opnsense/mvc/app/models/OPNsense/Frp
 VIEWS_DIR=		$(PLUGIN_PREFIX)/opnsense/mvc/app/views/OPNsense/Frp
 SCRIPTS_DIR=		$(PLUGIN_PREFIX)/opnsense/scripts/OPNsense/Frp
+WWW_JS_DIR=		$(PLUGIN_PREFIX)/www/js/frp
 TEMPLATES_DIR=		$(PLUGIN_PREFIX)/opnsense/service/templates/OPNsense/Frp
 ACTIONS_DIR=		$(PLUGIN_PREFIX)/opnsense/service/conf/actions.d
 HOOKS_DIR=		$(PLUGIN_PREFIX)/etc/inc/plugins.inc.d
@@ -60,6 +61,9 @@ install-plugin:
 	@mkdir -p $(RCD_DIR)
 	@cp src/usr/local/etc/rc.d/frp $(RCD_DIR)/frp
 	@chmod +x $(RCD_DIR)/frp
+	@# Static web assets (Chart.js)
+	@mkdir -p $(WWW_JS_DIR)
+	@cp src/opnsense/www/js/frp/*.js $(WWW_JS_DIR)/
 	@# Config and log directories
 	@mkdir -p /usr/local/etc/frp
 	@mkdir -p /var/log/frp
@@ -107,6 +111,7 @@ uninstall:
 	@rm -f $(HOOKS_DIR)/frp.inc
 	@rm -f $(RCD_DIR)/frp
 	@rm -f $(RCD_DIR)/frp_ssserver
+	@rm -rf $(WWW_JS_DIR)
 	@# Remove config and runtime files
 	@rm -rf /usr/local/etc/frp
 	@rm -f /etc/rc.conf.d/frp

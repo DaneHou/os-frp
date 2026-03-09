@@ -8,18 +8,6 @@
         mapDataToFormUI({'frm_client': '/api/frp/settings/getClient'}).done(function() {
             formatTokenizersUI();
             $('.selectpicker').selectpicker('refresh');
-
-            // Hide advanced fields by default
-            $('.advanced_fields').closest('tr').hide();
-
-            // Toggle advanced fields visibility
-            $('#client\\.showAdvanced').change(function() {
-                if ($(this).is(':checked')) {
-                    $('.advanced_fields').closest('tr').show();
-                } else {
-                    $('.advanced_fields').closest('tr').hide();
-                }
-            });
         });
 
         $("#saveAct").click(function(){

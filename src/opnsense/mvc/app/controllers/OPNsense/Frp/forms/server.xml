@@ -41,13 +41,6 @@
         <advanced>true</advanced>
     </field>
     <field>
-        <id>server.transportProtocol</id>
-        <label>Transport Protocol</label>
-        <type>dropdown</type>
-        <help>Transport protocol. WSS/WebSocket disguise FRP as HTTP(S) traffic. KCP and QUIC use UDP for better cross-border performance. Client and server must match.</help>
-        <advanced>true</advanced>
-    </field>
-    <field>
         <id>server.transportTcpMux</id>
         <label>TCP Multiplexing</label>
         <type>checkbox</type>

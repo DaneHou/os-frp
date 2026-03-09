@@ -11,9 +11,15 @@ auth.token = "{{ OPNsense.frp.server.authToken }}"
 
 transport.tcpMux = {{ "true" if OPNsense.frp.server.transportTcpMux == '1' else "false" }}
 transport.tls.force = {{ "true" if OPNsense.frp.server.transportTlsForce == '1' else "false" }}
+{% if OPNsense.frp.server.transportTcpKeepalive %}
 transport.tcpKeepalive = {{ OPNsense.frp.server.transportTcpKeepalive }}
+{% endif %}
+{% if OPNsense.frp.server.transportTcpMuxKeepaliveInterval %}
 transport.tcpMuxKeepaliveInterval = {{ OPNsense.frp.server.transportTcpMuxKeepaliveInterval }}
+{% endif %}
+{% if OPNsense.frp.server.transportHeartbeatTimeout %}
 transport.heartbeatTimeout = {{ OPNsense.frp.server.transportHeartbeatTimeout }}
+{% endif %}
 transport.maxPoolCount = {{ OPNsense.frp.server.maxPoolCount }}
 
 {% if OPNsense.frp.server.kcpBindPort and OPNsense.frp.server.kcpBindPort != '0' %}

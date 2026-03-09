@@ -71,7 +71,7 @@
          */
         $("#reconfigureAct").click(function(){
             $("#reconfigureAct_progress").addClass("fa fa-spinner fa-pulse");
-            ajaxCall('/api/frp/frpservice/reconfigure', {}, function(data, status) {
+            ajaxCall('/api/frp/service/reconfigure', {}, function(data, status) {
                 $("#reconfigureAct_progress").removeClass("fa fa-spinner fa-pulse");
             });
         });

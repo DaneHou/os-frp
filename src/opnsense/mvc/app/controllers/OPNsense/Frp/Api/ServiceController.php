@@ -4,7 +4,7 @@ namespace OPNsense\Frp\Api;
 
 use OPNsense\Base\ApiMutableServiceControllerBase;
 
-class FrpServiceController extends ApiMutableServiceControllerBase
+class ServiceController extends ApiMutableServiceControllerBase
 {
     protected static $internalServiceClass = '';
     protected static $internalServiceEnabled = '';

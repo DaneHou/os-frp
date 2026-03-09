@@ -13,7 +13,7 @@
         $("#saveAct").click(function(){
             saveFormToEndpoint('/api/frp/settings/setTuning', 'frm_tuning', function(){
                 $("#saveAct_progress").addClass("fa fa-spinner fa-pulse");
-                ajaxCall('/api/frp/frpservice/reconfigure', {}, function(data, status) {
+                ajaxCall('/api/frp/service/reconfigure', {}, function(data, status) {
                     $("#saveAct_progress").removeClass("fa fa-spinner fa-pulse");
                 });
             });

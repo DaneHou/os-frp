@@ -12,7 +12,7 @@
 
         $("#saveAct").click(function(){
             saveFormToEndpoint('/api/frp/settings/setServer', 'frm_server', function(){
-                ajaxCall('/api/frp/frpservice/reconfigure', {}, function(data, status) {
+                ajaxCall('/api/frp/service/reconfigure', {}, function(data, status) {
                     // Reconfigure done
                 });
             });

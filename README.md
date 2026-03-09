@@ -25,7 +25,8 @@ China OPNsense (frpc)              US OPNsense (frps)
 | FRP Client (frpc) | Full TOML v0.60+ config via GUI |
 | FRP Server (frps) | With optional web dashboard |
 | Proxy Management | tcp, udp, http, https, stcp, xtcp, sudp, tcpmux |
-| Cross-border Optimizations | tcpMux, heartbeat tuning, TLS, connection pooling |
+| Transport Protocols | TCP, WebSocket, WSS, KCP (UDP), QUIC (UDP) |
+| Cross-border Optimizations | tcpMux, heartbeat tuning, TLS, connection pooling, dial timeout/keepalive |
 | Network Tuning | TCP BBR, MTU clamping, MSS clamping (pf anchor) |
 | Binary Management | Auto-download frpc/frps from GitHub releases |
 
@@ -43,7 +44,7 @@ make install
 
 # Or step by step:
 make install-plugin   # Install MVC files, templates, hooks, rc.d
-make install-frp      # Download frpc/frps v0.61.1
+make install-frp      # Download frpc/frps v0.67.0
 make activate         # Clear caches, restart webgui + configd
 ```
 
@@ -164,6 +165,30 @@ Models (config.xml schema)     API Controllers              UI Controllers
 | MTU Clamp | `ifconfig <iface> mtu <value>` | Applied to resolved OPNsense interface |
 | MSS Clamp | `pfctl -a frp_mss -f -` with scrub rule | Uses pf anchor, doesn't touch main ruleset |
 
+### Transport Protocols
+
+| Protocol | Underlying | GFW Resistance | Speed | Reliability | Notes |
+|----------|-----------|----------------|-------|-------------|-------|
+| **TCP** | TCP | Low | Baseline | High | Default. Plain TCP, easy to fingerprint and throttle |
+| **WebSocket** | TCP | Medium | ~TCP | High | Wraps FRP in WS frames. Looks like HTTP upgrade traffic |
+| **WSS** | TCP+TLS | **High** | ~TCP | High | WebSocket over TLS. Looks like normal HTTPS. **Best for GFW evasion** |
+| **KCP** | **UDP** | Medium-High | **Fastest** | Medium | UDP-based ARQ protocol. Trades bandwidth for latency. GFW less aggressive on UDP |
+| **QUIC** | **UDP** | Medium-High | Fast | Medium-High | Google's UDP transport. Built-in TLS 1.3, 0-RTT reconnect |
+
+**Choosing a protocol for China-US tunnels:**
+
+- **WSS (recommended starting point)**: Most reliable for GFW evasion. Traffic is indistinguishable from normal HTTPS browsing. Works on any port (not just 443). Put Caddy in front as reverse proxy for extra camouflage. Downside: TCP head-of-line blocking on lossy links.
+
+- **KCP (try if WSS is slow)**: UDP-based, avoids TCP head-of-line blocking on lossy cross-border links. Can be 30-50% faster than TCP on high-loss paths. Downside: uses 2-3x bandwidth (sends redundant data), and some networks block/throttle UDP. Server needs `kcpBindPort` configured.
+
+- **QUIC (modern alternative to KCP)**: Similar UDP benefits as KCP but with built-in TLS 1.3 and smarter congestion control. Less bandwidth waste than KCP. Server needs `quicBindPort` configured. Still relatively new in FRP.
+
+- **WebSocket**: Only useful if you need HTTP-compatible transport but can't use TLS (rare). Otherwise just use WSS.
+
+- **TCP**: Only for trusted networks or when nothing else works. Easy for GFW to fingerprint and throttle.
+
+**Practical recommendation**: Start with **WSS**. If you notice speed issues (especially on lossy links), try **KCP** or **QUIC** as they avoid TCP's head-of-line blocking. If your ISP throttles UDP, stick with WSS.
+
 ### Cross-border Transport Defaults
 
 | Setting | Default | Why |
@@ -172,15 +197,17 @@ Models (config.xml schema)     API Controllers              UI Controllers
 | tcpMuxKeepalive | 10s | Keeps GFW from killing idle connections |
 | heartbeatInterval | 10s | Fast detection of tunnel loss |
 | heartbeatTimeout | 30s | Reasonable timeout before reconnect |
-| TLS | ON | Encrypts tunnel metadata |
+| TLS | OFF | Enable to encrypt tunnel metadata (OFF by default to avoid double encryption with WSS) |
 | loginFailExit | OFF | Auto-retry on auth failure (network blips) |
 | poolCount | 5 | Pre-established connections reduce latency |
+| dialServerTimeout | 10s | Connection timeout (increase for unstable links) |
+| dialServerKeepalive | 7200s | TCP keepalive for server connection (-1 to disable) |
 
 ## Binary Versions
 
 | Binary | Version | Source |
 |--------|---------|--------|
-| frpc/frps | v0.61.1 | [fatedier/frp](https://github.com/fatedier/frp) |
+| frpc/frps | v0.67.0 | [fatedier/frp](https://github.com/fatedier/frp) |
 
 Binaries are installed to `/usr/local/bin/` (FreeBSD amd64).
 

@@ -103,6 +103,32 @@
     </field>
     <field>
         <type>header</type>
+        <label>Network Tuning</label>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>server.bbrEnabled</id>
+        <label>Enable BBR</label>
+        <type>checkbox</type>
+        <help>Enables BBR congestion control. WARNING: This is a system-wide kernel setting that affects ALL TCP connections, not just FRP.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>server.mssClampEnabled</id>
+        <label>Enable MSS Clamping</label>
+        <type>checkbox</type>
+        <help>Clamps TCP MSS on WAN for FRP tunnel traffic. Fixes speed issues when cross-border links have low MTU (e.g., PPPoE). Recommended value: 1260 for MTU 1300.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>server.mssValue</id>
+        <label>MSS Value</label>
+        <type>text</type>
+        <help>Maximum Segment Size in bytes (default: 1260, range: 536-1460). Use 1260 to match Docker MTU 1300.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <type>header</type>
         <label>Virtual Host</label>
         <advanced>true</advanced>
     </field>

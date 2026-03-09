@@ -60,6 +60,17 @@
             <MinimumValue>0</MinimumValue>
             <MaximumValue>65535</MaximumValue>
         </vhostHTTPSPort>
+        <bbrEnabled type="BooleanField">
+            <default>0</default>
+        </bbrEnabled>
+        <mssClampEnabled type="BooleanField">
+            <default>0</default>
+        </mssClampEnabled>
+        <mssValue type="IntegerField">
+            <default>1260</default>
+            <MinimumValue>536</MinimumValue>
+            <MaximumValue>1460</MaximumValue>
+        </mssValue>
         <logLevel type="OptionField">
             <default>info</default>
             <OptionValues>

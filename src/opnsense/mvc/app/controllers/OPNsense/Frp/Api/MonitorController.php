@@ -139,7 +139,6 @@ class MonitorController extends ApiControllerBase
     {
         $proxyFilter = '';
         if (!empty($proxy)) {
-            $proxyFilter = "AND proxy_name = " . $db->escapeString($proxy);
             $proxyFilter = "AND proxy_name = '" . $db->escapeString($proxy) . "'";
         }
 
@@ -244,7 +243,7 @@ class MonitorController extends ApiControllerBase
     {
         $db = $this->getDb();
         if ($db === null) {
-            return ['status' => 'ok', 'totals' => [], 'proxies' => [], 'server' => null];
+            return ['status' => 'ok', 'totals' => ['today_in' => 0, 'today_out' => 0, 'speed_in' => 0, 'speed_out' => 0, 'cur_conns' => 0], 'proxies' => [], 'server' => null];
         }
 
         $now = time();

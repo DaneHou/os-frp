@@ -65,12 +65,12 @@ frp_start()
 
 frp_stop()
 {
+    # First try pidfile
     if [ -f "$pidfile" ]; then
         pid=$(cat "$pidfile")
         if kill -0 "$pid" 2>/dev/null; then
-            echo "Stopping FRP..."
+            echo "Stopping FRP (PID: ${pid})..."
             kill "$pid"
-            # Wait up to 5 seconds
             count=0
             while kill -0 "$pid" 2>/dev/null && [ $count -lt 10 ]; do
                 sleep 0.5
@@ -82,6 +82,22 @@ frp_stop()
         fi
         rm -f "$pidfile"
     fi
+
+    # Kill any orphaned frpc/frps processes (ours, not someone else's)
+    for proc in frpc frps; do
+        pids=$(pgrep -x "$proc" 2>/dev/null)
+        if [ -n "$pids" ]; then
+            echo "Killing orphaned ${proc} process(es): ${pids}"
+            kill $pids 2>/dev/null
+            sleep 1
+            # Force kill if still alive
+            for p in $pids; do
+                if kill -0 "$p" 2>/dev/null; then
+                    kill -9 "$p"
+                fi
+            done
+        fi
+    done
 }
 
 frp_status()

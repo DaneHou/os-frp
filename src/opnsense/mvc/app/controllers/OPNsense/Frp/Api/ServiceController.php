@@ -37,10 +37,10 @@ class ServiceController extends ApiMutableServiceControllerBase
         if ($this->request->isPost()) {
             $backend = new \OPNsense\Core\Backend();
             $backend->configdRun('template reload OPNsense/Frp');
-            $response = trim($backend->configdRun('frp start'));
-            return ['status' => 'ok', 'response' => $response];
+            $backend->configdRun('frp start');
+            return ['result' => 'ok'];
         }
-        return ['status' => 'failed'];
+        return ['result' => 'failed'];
     }
 
     /**
@@ -51,10 +51,10 @@ class ServiceController extends ApiMutableServiceControllerBase
     {
         if ($this->request->isPost()) {
             $backend = new \OPNsense\Core\Backend();
-            $response = trim($backend->configdRun('frp stop'));
-            return ['status' => 'ok', 'response' => $response];
+            $backend->configdRun('frp stop');
+            return ['result' => 'ok'];
         }
-        return ['status' => 'failed'];
+        return ['result' => 'failed'];
     }
 
     /**
@@ -65,6 +65,9 @@ class ServiceController extends ApiMutableServiceControllerBase
     {
         $backend = new \OPNsense\Core\Backend();
         $response = trim($backend->configdRun('frp status'));
-        return ['status' => 'ok', 'response' => $response];
+        if (strpos($response, 'is running') !== false) {
+            return ['result' => 'running'];
+        }
+        return ['result' => 'stopped'];
     }
 }

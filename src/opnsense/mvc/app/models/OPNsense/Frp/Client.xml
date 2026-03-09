@@ -43,7 +43,7 @@
             <MaximumValue>600</MaximumValue>
         </transportHeartbeatTimeout>
         <transportTlsEnable type="BooleanField">
-            <default>1</default>
+            <default>0</default>
         </transportTlsEnable>
         <transportTlsServerName type="TextField"/>
         <transportPoolCount type="IntegerField">

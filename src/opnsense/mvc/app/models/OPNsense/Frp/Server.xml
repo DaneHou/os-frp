@@ -41,7 +41,7 @@
             <MaximumValue>600</MaximumValue>
         </transportTcpMuxKeepaliveInterval>
         <transportHeartbeatTimeout type="IntegerField">
-            <default>90</default>
+            <default>-1</default>
             <MinimumValue>-1</MinimumValue>
             <MaximumValue>600</MaximumValue>
         </transportHeartbeatTimeout>

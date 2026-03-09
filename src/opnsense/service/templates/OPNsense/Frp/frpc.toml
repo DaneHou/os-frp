@@ -11,6 +11,7 @@ auth.method = "token"
 auth.token = "{{ OPNsense.frp.client.authToken }}"
 {% endif %}
 
+transport.protocol = "{{ OPNsense.frp.client.transportProtocol }}"
 transport.tcpMux = {{ "true" if OPNsense.frp.client.transportTcpMux == '1' else "false" }}
 transport.tcpMuxKeepaliveInterval = {{ OPNsense.frp.client.transportTcpMuxKeepaliveInterval }}
 transport.heartbeatInterval = {{ OPNsense.frp.client.transportHeartbeatInterval }}

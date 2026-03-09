@@ -41,6 +41,13 @@
         <advanced>true</advanced>
     </field>
     <field>
+        <id>server.transportProtocol</id>
+        <label>Transport Protocol</label>
+        <type>dropdown</type>
+        <help>Transport protocol. WSS (WebSocket over TLS) makes FRP traffic look like normal HTTPS, harder for GFW to detect. Both client and server must match.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
         <id>server.transportTcpMux</id>
         <label>TCP Multiplexing</label>
         <type>checkbox</type>

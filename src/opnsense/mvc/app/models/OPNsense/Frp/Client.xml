@@ -24,6 +24,13 @@
             </OptionValues>
         </authMethod>
         <authToken type="TextField"/>
+        <transportProtocol type="OptionField">
+            <default>tcp</default>
+            <OptionValues>
+                <tcp>TCP</tcp>
+                <wss>WSS (WebSocket over TLS)</wss>
+            </OptionValues>
+        </transportProtocol>
         <transportTcpMux type="BooleanField">
             <default>1</default>
         </transportTcpMux>

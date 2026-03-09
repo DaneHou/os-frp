@@ -127,7 +127,7 @@ $(document).ready(function() {
 
     // --- Load proxy list ---
     function loadProxies() {
-        $.getJSON('/api/frp/monitor/proxies', function(resp) {
+        ajaxGet('/api/frp/monitor/proxies', {}, function(resp) {
             if (resp.status === 'ok') {
                 proxyList = resp.proxies || [];
                 var sel = $('#proxyFilter, #historyProxyFilter');
@@ -141,7 +141,7 @@ $(document).ready(function() {
 
     // --- Summary cards ---
     function updateSummary() {
-        $.getJSON('/api/frp/monitor/summary', function(resp) {
+        ajaxGet('/api/frp/monitor/summary', {}, function(resp) {
             if (resp.status !== 'ok') return;
             var t = resp.totals;
             $('#card-today-in').text(formatBytes(t.today_in));
@@ -198,7 +198,7 @@ $(document).ready(function() {
         var url = '/api/frp/monitor/realtime?seconds=300';
         if (selectedProxy) url += '&proxy=' + encodeURIComponent(selectedProxy);
 
-        $.getJSON(url, function(resp) {
+        ajaxGet(url, {}, function(resp) {
             if (resp.status !== 'ok') return;
 
             // Group by proxy
@@ -291,7 +291,7 @@ $(document).ready(function() {
         var url = '/api/frp/monitor/history?range=' + historyRange;
         if (histProxy) url += '&proxy=' + encodeURIComponent(histProxy);
 
-        $.getJSON(url, function(resp) {
+        ajaxGet(url, {}, function(resp) {
             if (resp.status !== 'ok') return;
 
             var byProxy = {};

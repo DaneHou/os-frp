@@ -29,12 +29,6 @@
         color: #777;
         margin-top: 5px;
     }
-    .monitor-card.card-sm .card-value {
-        font-size: 16px;
-    }
-    .monitor-card.card-sm .card-label {
-        font-size: 11px;
-    }
     .chart-container {
         position: relative;
         background: #fff;
@@ -480,11 +474,11 @@ $(document).ready(function() {
             <div class="card-value" id="card-conns">-</div>
             <div class="card-label">{{ lang._('Active Connections') }}</div>
         </div>
-        <div class="monitor-card card-sm">
+        <div class="monitor-card">
             <div class="card-value" id="card-today-in">-</div>
             <div class="card-label">{{ lang._('Today In') }}</div>
         </div>
-        <div class="monitor-card card-sm">
+        <div class="monitor-card">
             <div class="card-value" id="card-today-out">-</div>
             <div class="card-label">{{ lang._('Today Out') }}</div>
         </div>

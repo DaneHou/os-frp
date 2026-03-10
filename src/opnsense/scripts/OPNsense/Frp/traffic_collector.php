@@ -169,7 +169,9 @@ function getServerConfig()
 
 function fetchApi($config, $path)
 {
-    $url = "http://{$config['addr']}:{$config['port']}{$path}";
+    // 0.0.0.0 is a listen address; connect to localhost instead
+    $addr = ($config['addr'] === '0.0.0.0') ? '127.0.0.1' : $config['addr'];
+    $url = "http://{$addr}:{$config['port']}{$path}";
     $ctx = stream_context_create([
         'http' => [
             'timeout' => 5,

@@ -412,8 +412,8 @@ $(document).ready(function() {
     updateHistoryChart();
 
     // Timers
-    realtimeTimer = setInterval(function() { updateRealtimeChart(); }, 5000);
-    summaryTimer = setInterval(function() { updateSummary(); }, 5000);
+    realtimeTimer = setInterval(function() { updateRealtimeChart(); }, 2000);
+    summaryTimer = setInterval(function() { updateSummary(); }, 2000);
 
     // --- Event handlers ---
     $('#proxyFilter').on('change', function() {
@@ -510,11 +510,9 @@ $(document).ready(function() {
                     <option value="">{{ lang._('All Proxies') }}</option>
                 </select>
                 <button class="range-btn" data-range="1h">1h</button>
-                <button class="range-btn" data-range="6h">6h</button>
                 <button class="range-btn active" data-range="24h">24h</button>
                 <button class="range-btn" data-range="7d">7d</button>
                 <button class="range-btn" data-range="30d">30d</button>
-                <button class="range-btn" data-range="90d">90d</button>
                 <button class="range-btn" data-range="1yr">1yr</button>
             </div>
         </div>

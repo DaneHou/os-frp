@@ -10,7 +10,6 @@
  */
 
 define('DB_PATH', '/var/db/frp/traffic.db');
-define('COLLECT_INTERVAL', 5);  // seconds between samples
 define('LOOP_DURATION', 55);   // run for 55s, cron restarts next minute
 define('RAW_RETENTION', 86400);       // 24 hours
 define('HOURLY_RETENTION', 2592000);  // 30 days
@@ -158,6 +157,20 @@ function getServerConfig()
         'user' => (string)($server->webServerUser ?? ''),
         'password' => (string)($server->webServerPassword ?? ''),
     ];
+}
+
+function getCollectInterval()
+{
+    $configFile = '/conf/config.xml';
+    if (!file_exists($configFile)) {
+        return 5;
+    }
+    $xml = simplexml_load_file($configFile);
+    if ($xml === false) {
+        return 5;
+    }
+    $val = (int)($xml->OPNsense->frp->client->monitorInterval ?? $xml->OPNsense->frp->server->monitorInterval ?? 5);
+    return max(1, min(30, $val));
 }
 
 function fetchApi($config, $path)
@@ -424,6 +437,7 @@ try {
     $db = initDatabase();
     $clientConfig = getClientConfig();
     $serverConfig = getServerConfig();
+    $collectInterval = getCollectInterval();
     $startTime = time();
     $lastAggregation = 0;
 
@@ -450,10 +464,10 @@ try {
         $db->exec('COMMIT');
 
         $elapsed = time() - $startTime;
-        if ($elapsed + COLLECT_INTERVAL >= LOOP_DURATION) {
+        if ($elapsed + $collectInterval >= LOOP_DURATION) {
             break;
         }
-        sleep(COLLECT_INTERVAL);
+        usleep($collectInterval * 1000000);
     }
 
     $db->close();

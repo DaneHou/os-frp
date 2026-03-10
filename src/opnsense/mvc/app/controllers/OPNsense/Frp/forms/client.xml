@@ -162,6 +162,13 @@
         <advanced>true</advanced>
     </field>
     <field>
+        <id>client.monitorInterval</id>
+        <label>Monitor Sampling Interval</label>
+        <type>dropdown</type>
+        <help>How often the traffic monitor collects data. Lower values give smoother charts but use more disk/CPU.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
         <id>client.webServerAddr</id>
         <label>Dashboard Listen Address</label>
         <type>text</type>

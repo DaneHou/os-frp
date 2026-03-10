@@ -111,6 +111,16 @@
             <MinimumValue>536</MinimumValue>
             <MaximumValue>1460</MaximumValue>
         </mssValue>
+        <monitorInterval type="OptionField">
+            <default>5</default>
+            <OptionValues>
+                <option1 value="1">1s</option1>
+                <option2 value="2">2s</option2>
+                <option5 value="5">5s</option5>
+                <option10 value="10">10s</option10>
+                <option30 value="30">30s</option30>
+            </OptionValues>
+        </monitorInterval>
         <webServerEnabled type="BooleanField">
             <default>0</default>
         </webServerEnabled>

@@ -185,5 +185,21 @@
                 </useEncryption>
             </proxy>
         </proxies>
+        <healthTargets>
+            <healthTarget type="ArrayField">
+                <enabled type="BooleanField">
+                    <default>1</default>
+                </enabled>
+                <label type="TextField">
+                    <Required>Y</Required>
+                    <MinimumLength>1</MinimumLength>
+                    <MaximumLength>64</MaximumLength>
+                </label>
+                <url type="TextField">
+                    <Required>Y</Required>
+                    <Mask>/^https?:\/\/.+/</Mask>
+                </url>
+            </healthTarget>
+        </healthTargets>
     </items>
 </model>

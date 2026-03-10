@@ -3,6 +3,7 @@
 namespace OPNsense\Frp\Api;
 
 use OPNsense\Base\ApiControllerBase;
+use OPNsense\Frp\Client;
 
 class MonitorController extends ApiControllerBase
 {
@@ -291,21 +292,30 @@ class MonitorController extends ApiControllerBase
             }
         }
 
-        // Supplement 7d with recent raw data (last 24h, not yet aggregated into hourly)
+        // Supplement 7d: yesterday tail (rawStart to todayStart, no midnight reset)
         $rawStart = max($weekAgo, $now - 86400);
-        $query = $db->query(
-            "SELECT proxy_name, MAX(traffic_in) - MIN(traffic_in) as bytes_in,
-                    MAX(traffic_out) - MIN(traffic_out) as bytes_out
-             FROM traffic_samples
-             WHERE timestamp >= {$rawStart}
-             GROUP BY proxy_name"
-        );
-        while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
-            if (isset($proxies[$row['proxy_name']])) {
-                $proxies[$row['proxy_name']]['week_in'] += max(0, (int)$row['bytes_in']);
-                $proxies[$row['proxy_name']]['week_out'] += max(0, (int)$row['bytes_out']);
+        if ($rawStart < $todayStart) {
+            $query = $db->query(
+                "SELECT proxy_name, MAX(traffic_in) - MIN(traffic_in) as bytes_in,
+                        MAX(traffic_out) - MIN(traffic_out) as bytes_out
+                 FROM traffic_samples
+                 WHERE timestamp >= {$rawStart} AND timestamp < {$todayStart}
+                 GROUP BY proxy_name"
+            );
+            while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
+                if (isset($proxies[$row['proxy_name']])) {
+                    $proxies[$row['proxy_name']]['week_in'] += max(0, (int)$row['bytes_in']);
+                    $proxies[$row['proxy_name']]['week_out'] += max(0, (int)$row['bytes_out']);
+                }
             }
         }
+
+        // Supplement 7d: add today (already computed from latest sample)
+        foreach ($proxies as $name => &$p) {
+            $p['week_in'] += $p['today_in'];
+            $p['week_out'] += $p['today_out'];
+        }
+        unset($p);
 
         // 30-day traffic from hourly + daily
         $query = $db->query(
@@ -333,21 +343,30 @@ class MonitorController extends ApiControllerBase
             }
         }
 
-        // Supplement 30d with recent raw data (last 24h, not yet aggregated into hourly)
+        // Supplement 30d: yesterday tail (rawStart to todayStart, no midnight reset)
         $rawStart30 = max($monthAgo, $now - 86400);
-        $query = $db->query(
-            "SELECT proxy_name, MAX(traffic_in) - MIN(traffic_in) as bytes_in,
-                    MAX(traffic_out) - MIN(traffic_out) as bytes_out
-             FROM traffic_samples
-             WHERE timestamp >= {$rawStart30}
-             GROUP BY proxy_name"
-        );
-        while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
-            if (isset($proxies[$row['proxy_name']])) {
-                $proxies[$row['proxy_name']]['month_in'] += max(0, (int)$row['bytes_in']);
-                $proxies[$row['proxy_name']]['month_out'] += max(0, (int)$row['bytes_out']);
+        if ($rawStart30 < $todayStart) {
+            $query = $db->query(
+                "SELECT proxy_name, MAX(traffic_in) - MIN(traffic_in) as bytes_in,
+                        MAX(traffic_out) - MIN(traffic_out) as bytes_out
+                 FROM traffic_samples
+                 WHERE timestamp >= {$rawStart30} AND timestamp < {$todayStart}
+                 GROUP BY proxy_name"
+            );
+            while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
+                if (isset($proxies[$row['proxy_name']])) {
+                    $proxies[$row['proxy_name']]['month_in'] += max(0, (int)$row['bytes_in']);
+                    $proxies[$row['proxy_name']]['month_out'] += max(0, (int)$row['bytes_out']);
+                }
             }
         }
+
+        // Supplement 30d: add today (already computed from latest sample)
+        foreach ($proxies as $name => &$p) {
+            $p['month_in'] += $p['today_in'];
+            $p['month_out'] += $p['today_out'];
+        }
+        unset($p);
 
         // Compute totals
         $totalTodayIn = 0;
@@ -387,5 +406,62 @@ class MonitorController extends ApiControllerBase
             'proxies' => array_values($proxies),
             'server' => $server,
         ];
+    }
+
+    /**
+     * GET /api/frp/monitor/healthcheck
+     * Curl enabled health targets and return latency
+     */
+    public function healthcheckAction()
+    {
+        $mdl = new Client();
+        $results = [];
+
+        foreach ($mdl->healthTargets->healthTarget->iterateItems() as $uuid => $target) {
+            if ((string)$target->enabled !== '1') {
+                continue;
+            }
+
+            $label = (string)$target->label;
+            $url = (string)$target->url;
+
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => $url,
+                CURLOPT_NOBODY => true,
+                CURLOPT_TIMEOUT => 5,
+                CURLOPT_CONNECTTIMEOUT => 5,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_MAXREDIRS => 3,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+            ]);
+
+            $ok = curl_exec($ch);
+            $entry = [
+                'uuid' => $uuid,
+                'label' => $label,
+                'url' => $url,
+            ];
+
+            if ($ok === false) {
+                $entry['status'] = 'error';
+                $entry['latency_ms'] = null;
+                $entry['http_code'] = 0;
+                $entry['error'] = curl_error($ch);
+            } else {
+                $totalTime = curl_getinfo($ch, CURLINFO_TOTAL_TIME);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $entry['status'] = 'ok';
+                $entry['latency_ms'] = round($totalTime * 1000, 1);
+                $entry['http_code'] = (int)$httpCode;
+                $entry['error'] = null;
+            }
+
+            curl_close($ch);
+            $results[] = $entry;
+        }
+
+        return ['status' => 'ok', 'results' => $results];
     }
 }

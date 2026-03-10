@@ -81,6 +81,13 @@
     canvas {
         max-height: 300px;
     }
+    .health-ok { color: #5cb85c; }
+    .health-warn { color: #f0ad4e; }
+    .health-error { color: #d9534f; }
+    .health-latency-good { background: #dff0d8; }
+    .health-latency-medium { background: #fcf8e3; }
+    .health-latency-bad { background: #f2dede; }
+    #healthTargetsSection { display: none; margin-top: 15px; }
 </style>
 
 <script src="/js/frp/chart.umd.min.js"></script>
@@ -456,6 +463,71 @@ $(document).ready(function() {
         updateRealtimeChart();
         updateHistoryChart();
     });
+
+    // --- Health Check ---
+    function runHealthCheck() {
+        $('#healthCheckBtn').prop('disabled', true).find('i').addClass('fa-spin');
+        $('#healthResultsBody').html('<tr><td colspan="5" class="text-center">Checking...</td></tr>');
+        ajaxGet('/api/frp/monitor/healthcheck', {}, function(resp) {
+            $('#healthCheckBtn').prop('disabled', false).find('i').removeClass('fa-spin');
+            if (resp.status !== 'ok' || !resp.results || resp.results.length === 0) {
+                $('#healthResultsBody').html('<tr><td colspan="5" class="text-center">No health targets configured. Click "Manage Targets" to add some.</td></tr>');
+                return;
+            }
+            var html = '';
+            resp.results.forEach(function(r) {
+                var statusIcon, latencyClass;
+                if (r.status === 'error') {
+                    statusIcon = '<i class="fa fa-times-circle health-error"></i> Error';
+                    latencyClass = 'health-latency-bad';
+                } else if (r.latency_ms > 1000) {
+                    statusIcon = '<i class="fa fa-exclamation-circle health-warn"></i> Slow';
+                    latencyClass = 'health-latency-bad';
+                } else if (r.latency_ms > 300) {
+                    statusIcon = '<i class="fa fa-check-circle health-warn"></i> OK';
+                    latencyClass = 'health-latency-medium';
+                } else {
+                    statusIcon = '<i class="fa fa-check-circle health-ok"></i> Fast';
+                    latencyClass = 'health-latency-good';
+                }
+                var latencyText = r.latency_ms !== null ? r.latency_ms + ' ms' : '-';
+                var codeText = r.http_code || '-';
+                if (r.error) codeText = '<span class="health-error" title="' + $('<span>').text(r.error).html() + '">' + (r.error.length > 30 ? r.error.substring(0, 30) + '...' : r.error) + '</span>';
+                html += '<tr class="' + latencyClass + '">' +
+                    '<td>' + $('<span>').text(r.label).html() + '</td>' +
+                    '<td><small>' + $('<span>').text(r.url).html() + '</small></td>' +
+                    '<td>' + statusIcon + '</td>' +
+                    '<td>' + latencyText + '</td>' +
+                    '<td>' + codeText + '</td>' +
+                    '</tr>';
+            });
+            $('#healthResultsBody').html(html);
+        });
+    }
+
+    $('#healthCheckBtn').on('click', function() { runHealthCheck(); });
+    $('#manageTargetsBtn').on('click', function() {
+        $('#healthTargetsSection').toggle();
+    });
+
+    // Health targets bootgrid
+    $('#grid-healthtargets').UIBootgrid({
+        search: '/api/frp/healthcheck/searchItem',
+        get: '/api/frp/healthcheck/getItem/',
+        set: '/api/frp/healthcheck/setItem/',
+        add: '/api/frp/healthcheck/addItem/',
+        del: '/api/frp/healthcheck/delItem/',
+        toggle: '/api/frp/healthcheck/toggleItem/',
+        options: {
+            requestHandler: function(request) {
+                request['frp'] = {};
+                return request;
+            }
+        }
+    });
+
+    // Auto-check on page load
+    runHealthCheck();
 });
 </script>
 
@@ -545,4 +617,57 @@ $(document).ready(function() {
             </tbody>
         </table>
     </div>
+
+    <!-- Health Check -->
+    <div class="chart-container">
+        <div class="chart-header">
+            <h3>{{ lang._('Health Check') }}</h3>
+            <div>
+                <button id="healthCheckBtn" class="btn btn-primary btn-xs"><i class="fa fa-heartbeat"></i> {{ lang._('Check Now') }}</button>
+                <button id="manageTargetsBtn" class="btn btn-default btn-xs"><i class="fa fa-cog"></i> {{ lang._('Manage Targets') }}</button>
+            </div>
+        </div>
+        <table class="table table-condensed table-hover table-striped">
+            <thead>
+                <tr>
+                    <th>{{ lang._('Label') }}</th>
+                    <th>{{ lang._('URL') }}</th>
+                    <th>{{ lang._('Status') }}</th>
+                    <th>{{ lang._('Latency') }}</th>
+                    <th>{{ lang._('Details') }}</th>
+                </tr>
+            </thead>
+            <tbody id="healthResultsBody">
+                <tr><td colspan="5" class="text-center">{{ lang._('Click "Check Now" to test connectivity.') }}</td></tr>
+            </tbody>
+        </table>
+
+        <div id="healthTargetsSection">
+            <hr/>
+            <h4>{{ lang._('Health Check Targets') }}</h4>
+            <table id="grid-healthtargets" class="table table-condensed table-hover table-striped" data-editDialog="DialogHealthTarget" data-editAlert="frpChangeMessage">
+                <thead>
+                    <tr>
+                        <th data-column-id="uuid" data-type="string" data-identifier="true" data-visible="false">{{ lang._('ID') }}</th>
+                        <th data-column-id="enabled" data-width="6em" data-type="string" data-formatter="rowtoggle">{{ lang._('Enabled') }}</th>
+                        <th data-column-id="label" data-type="string">{{ lang._('Label') }}</th>
+                        <th data-column-id="url" data-type="string">{{ lang._('URL') }}</th>
+                        <th data-column-id="commands" data-width="7em" data-formatter="commands" data-sortable="false">{{ lang._('Commands') }}</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+                <tfoot>
+                    <tr>
+                        <td></td>
+                        <td>
+                            <button data-action="add" type="button" class="btn btn-xs btn-primary"><span class="fa fa-fw fa-plus"></span></button>
+                            <button data-action="deleteSelected" type="button" class="btn btn-xs btn-default"><span class="fa fa-fw fa-trash-o"></span></button>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    {{ partial("layout_partials/base_dialog",['fields':healthTargetForm,'id':'DialogHealthTarget','label':lang._('Edit Health Target')]) }}
 </div>

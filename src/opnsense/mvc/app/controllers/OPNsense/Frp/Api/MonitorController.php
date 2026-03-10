@@ -304,6 +304,22 @@ class MonitorController extends ApiControllerBase
             }
         }
 
+        // Supplement 7d with recent raw data (last 24h, not yet aggregated into hourly)
+        $rawStart = max($weekAgo, $now - 86400);
+        $query = $db->query(
+            "SELECT proxy_name, MAX(traffic_in) - MIN(traffic_in) as bytes_in,
+                    MAX(traffic_out) - MIN(traffic_out) as bytes_out
+             FROM traffic_samples
+             WHERE timestamp >= {$rawStart}
+             GROUP BY proxy_name"
+        );
+        while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
+            if (isset($proxies[$row['proxy_name']])) {
+                $proxies[$row['proxy_name']]['week_in'] += max(0, (int)$row['bytes_in']);
+                $proxies[$row['proxy_name']]['week_out'] += max(0, (int)$row['bytes_out']);
+            }
+        }
+
         // 30-day traffic from hourly + daily
         $query = $db->query(
             "SELECT proxy_name, SUM(bytes_in) as bytes_in, SUM(bytes_out) as bytes_out
@@ -327,6 +343,22 @@ class MonitorController extends ApiControllerBase
             if (isset($proxies[$row['proxy_name']])) {
                 $proxies[$row['proxy_name']]['month_in'] += (int)$row['bytes_in'];
                 $proxies[$row['proxy_name']]['month_out'] += (int)$row['bytes_out'];
+            }
+        }
+
+        // Supplement 30d with recent raw data (last 24h, not yet aggregated into hourly)
+        $rawStart30 = max($monthAgo, $now - 86400);
+        $query = $db->query(
+            "SELECT proxy_name, MAX(traffic_in) - MIN(traffic_in) as bytes_in,
+                    MAX(traffic_out) - MIN(traffic_out) as bytes_out
+             FROM traffic_samples
+             WHERE timestamp >= {$rawStart30}
+             GROUP BY proxy_name"
+        );
+        while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
+            if (isset($proxies[$row['proxy_name']])) {
+                $proxies[$row['proxy_name']]['month_in'] += max(0, (int)$row['bytes_in']);
+                $proxies[$row['proxy_name']]['month_out'] += max(0, (int)$row['bytes_out']);
             }
         }
 

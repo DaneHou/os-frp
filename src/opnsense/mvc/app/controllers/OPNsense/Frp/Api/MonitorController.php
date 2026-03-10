@@ -260,34 +260,21 @@ class MonitorController extends ApiControllerBase
              ON s.proxy_name = latest.proxy_name AND s.timestamp = latest.max_ts"
         );
         while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
+            // traffic_in/traffic_out from the latest sample ARE FRP's cumulative
+            // "todayTraffic" counters — use them directly as today's total
             $proxies[$row['proxy_name']] = [
                 'name' => $row['proxy_name'],
                 'type' => $row['proxy_type'],
                 'speed_in' => (float)$row['speed_in'],
                 'speed_out' => (float)$row['speed_out'],
                 'cur_conns' => (int)$row['cur_conns'],
-                'today_in' => 0,
-                'today_out' => 0,
+                'today_in' => max(0, (int)$row['traffic_in']),
+                'today_out' => max(0, (int)$row['traffic_out']),
                 'week_in' => 0,
                 'week_out' => 0,
                 'month_in' => 0,
                 'month_out' => 0,
             ];
-        }
-
-        // Today's traffic from raw samples
-        $query = $db->query(
-            "SELECT proxy_name, MAX(traffic_in) - MIN(traffic_in) as bytes_in,
-                    MAX(traffic_out) - MIN(traffic_out) as bytes_out
-             FROM traffic_samples
-             WHERE timestamp >= {$todayStart}
-             GROUP BY proxy_name"
-        );
-        while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
-            if (isset($proxies[$row['proxy_name']])) {
-                $proxies[$row['proxy_name']]['today_in'] = max(0, (int)$row['bytes_in']);
-                $proxies[$row['proxy_name']]['today_out'] = max(0, (int)$row['bytes_out']);
-            }
         }
 
         // 7-day traffic from hourly

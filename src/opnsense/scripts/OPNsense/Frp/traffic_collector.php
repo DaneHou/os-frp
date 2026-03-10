@@ -10,7 +10,7 @@
  */
 
 define('DB_PATH', '/var/db/frp/traffic.db');
-define('MIN_INTERVAL', 25); // minimum seconds between samples
+define('MIN_INTERVAL', 15); // minimum seconds between samples
 define('RAW_RETENTION', 86400);       // 24 hours
 define('HOURLY_RETENTION', 2592000);  // 30 days
 define('DAILY_RETENTION', 31536000);  // 1 year

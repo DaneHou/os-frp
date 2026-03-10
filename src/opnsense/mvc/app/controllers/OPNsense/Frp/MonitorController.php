@@ -8,6 +8,7 @@ class MonitorController extends IndexController
 {
     public function indexAction()
     {
+        $this->view->healthTargetForm = $this->getForm('healthtarget');
         $this->view->pick('OPNsense/Frp/monitor');
     }
 }

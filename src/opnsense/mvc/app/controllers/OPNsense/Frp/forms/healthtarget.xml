@@ -1,0 +1,19 @@
+<form>
+    <field>
+        <id>healthTarget.enabled</id>
+        <label>Enabled</label>
+        <type>checkbox</type>
+    </field>
+    <field>
+        <id>healthTarget.label</id>
+        <label>Label</label>
+        <type>text</type>
+        <help>Display name (e.g., "Bilibili", "YouTube")</help>
+    </field>
+    <field>
+        <id>healthTarget.url</id>
+        <label>URL</label>
+        <type>text</type>
+        <help>Full URL to check (e.g., https://www.bilibili.com)</help>
+    </field>
+</form>

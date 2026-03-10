@@ -155,6 +155,13 @@
         <advanced>true</advanced>
     </field>
     <field>
+        <id>server.monitorInterval</id>
+        <label>Monitor Sampling Interval</label>
+        <type>dropdown</type>
+        <help>How often the traffic monitor collects data. Lower values give smoother charts but use more disk/CPU.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
         <id>server.webServerPort</id>
         <label>Dashboard Port</label>
         <type>text</type>

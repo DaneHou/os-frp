@@ -172,17 +172,19 @@ function fetchApi($config, $path)
     // 0.0.0.0 is a listen address; connect to localhost instead
     $addr = ($config['addr'] === '0.0.0.0') ? '127.0.0.1' : $config['addr'];
     $url = "http://{$addr}:{$config['port']}{$path}";
-    $ctx = stream_context_create([
-        'http' => [
-            'timeout' => 5,
-            'header' => !empty($config['user'])
-                ? "Authorization: Basic " . base64_encode("{$config['user']}:{$config['password']}")
-                : '',
-        ],
-    ]);
 
-    $response = @file_get_contents($url, false, $ctx);
-    if ($response === false) {
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+    if (!empty($config['user'])) {
+        curl_setopt($ch, CURLOPT_USERPWD, "{$config['user']}:{$config['password']}");
+    }
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($response === false || $httpCode !== 200) {
         return null;
     }
 

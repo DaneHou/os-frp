@@ -468,40 +468,49 @@ $(document).ready(function() {
     function runHealthCheck() {
         $('#healthCheckBtn').prop('disabled', true).find('i').addClass('fa-spin');
         $('#healthResultsBody').html('<tr><td colspan="5" class="text-center">Checking...</td></tr>');
-        ajaxGet('/api/frp/monitor/healthcheck', {}, function(resp) {
-            $('#healthCheckBtn').prop('disabled', false).find('i').removeClass('fa-spin');
-            if (resp.status !== 'ok' || !resp.results || resp.results.length === 0) {
-                $('#healthResultsBody').html('<tr><td colspan="5" class="text-center">No health targets configured. Click "Manage Targets" to add some.</td></tr>');
-                return;
-            }
-            var html = '';
-            resp.results.forEach(function(r) {
-                var statusIcon, latencyClass;
-                if (r.status === 'error') {
-                    statusIcon = '<i class="fa fa-times-circle health-error"></i> Error';
-                    latencyClass = 'health-latency-bad';
-                } else if (r.latency_ms > 1000) {
-                    statusIcon = '<i class="fa fa-exclamation-circle health-warn"></i> Slow';
-                    latencyClass = 'health-latency-bad';
-                } else if (r.latency_ms > 300) {
-                    statusIcon = '<i class="fa fa-check-circle health-warn"></i> OK';
-                    latencyClass = 'health-latency-medium';
-                } else {
-                    statusIcon = '<i class="fa fa-check-circle health-ok"></i> Fast';
-                    latencyClass = 'health-latency-good';
+        $.ajax({
+            url: '/api/frp/monitor/healthcheck',
+            type: 'GET',
+            dataType: 'json',
+            success: function(resp) {
+                $('#healthCheckBtn').prop('disabled', false).find('i').removeClass('fa-spin');
+                if (resp.status !== 'ok' || !resp.results || resp.results.length === 0) {
+                    $('#healthResultsBody').html('<tr><td colspan="5" class="text-center">No health targets configured. Click "Manage Targets" to add some.</td></tr>');
+                    return;
                 }
-                var latencyText = r.latency_ms !== null ? r.latency_ms + ' ms' : '-';
-                var codeText = r.http_code || '-';
-                if (r.error) codeText = '<span class="health-error" title="' + $('<span>').text(r.error).html() + '">' + (r.error.length > 30 ? r.error.substring(0, 30) + '...' : r.error) + '</span>';
-                html += '<tr class="' + latencyClass + '">' +
-                    '<td>' + $('<span>').text(r.label).html() + '</td>' +
-                    '<td><small>' + $('<span>').text(r.url).html() + '</small></td>' +
-                    '<td>' + statusIcon + '</td>' +
-                    '<td>' + latencyText + '</td>' +
-                    '<td>' + codeText + '</td>' +
-                    '</tr>';
-            });
-            $('#healthResultsBody').html(html);
+                var html = '';
+                resp.results.forEach(function(r) {
+                    var statusIcon, latencyClass;
+                    if (r.status === 'error') {
+                        statusIcon = '<i class="fa fa-times-circle health-error"></i> Error';
+                        latencyClass = 'health-latency-bad';
+                    } else if (r.latency_ms > 1000) {
+                        statusIcon = '<i class="fa fa-exclamation-circle health-warn"></i> Slow';
+                        latencyClass = 'health-latency-bad';
+                    } else if (r.latency_ms > 300) {
+                        statusIcon = '<i class="fa fa-check-circle health-warn"></i> OK';
+                        latencyClass = 'health-latency-medium';
+                    } else {
+                        statusIcon = '<i class="fa fa-check-circle health-ok"></i> Fast';
+                        latencyClass = 'health-latency-good';
+                    }
+                    var latencyText = r.latency_ms !== null ? r.latency_ms + ' ms' : '-';
+                    var codeText = r.http_code || '-';
+                    if (r.error) codeText = '<span class="health-error" title="' + $('<span>').text(r.error).html() + '">' + (r.error.length > 30 ? r.error.substring(0, 30) + '...' : r.error) + '</span>';
+                    html += '<tr class="' + latencyClass + '">' +
+                        '<td>' + $('<span>').text(r.label).html() + '</td>' +
+                        '<td><small>' + $('<span>').text(r.url).html() + '</small></td>' +
+                        '<td>' + statusIcon + '</td>' +
+                        '<td>' + latencyText + '</td>' +
+                        '<td>' + codeText + '</td>' +
+                        '</tr>';
+                });
+                $('#healthResultsBody').html(html);
+            },
+            error: function() {
+                $('#healthCheckBtn').prop('disabled', false).find('i').removeClass('fa-spin');
+                $('#healthResultsBody').html('<tr><td colspan="5" class="text-center">No health targets configured. Click "Manage Targets" to add some.</td></tr>');
+            }
         });
     }
 

@@ -4,7 +4,7 @@ namespace OPNsense\Frp\Api;
 
 use OPNsense\Base\ApiMutableModelControllerBase;
 
-class HealthCheckController extends ApiMutableModelControllerBase
+class HealthcheckController extends ApiMutableModelControllerBase
 {
     protected static $internalModelName = 'client';
     protected static $internalModelClass = 'OPNsense\Frp\Client';

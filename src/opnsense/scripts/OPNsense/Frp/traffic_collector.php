@@ -245,11 +245,15 @@ function collectServerData($db, $config, $now)
             if (!isset($item['name'])) {
                 continue;
             }
+            // FRP reports traffic from the proxy handler's perspective, which is
+            // reversed on the server: FRP "trafficIn" = data leaving this machine,
+            // FRP "trafficOut" = data arriving at this machine. Swap to normalize
+            // to machine-centric In/Out (In = into this machine, Out = out of it).
             $proxies[] = [
                 'name' => $item['name'],
                 'type' => $type,
-                'traffic_in' => (int)($item['todayTrafficIn'] ?? $item['today_traffic_in'] ?? 0),
-                'traffic_out' => (int)($item['todayTrafficOut'] ?? $item['today_traffic_out'] ?? 0),
+                'traffic_in' => (int)($item['todayTrafficOut'] ?? $item['today_traffic_out'] ?? 0),
+                'traffic_out' => (int)($item['todayTrafficIn'] ?? $item['today_traffic_in'] ?? 0),
                 'cur_conns' => (int)($item['curConns'] ?? $item['cur_conns'] ?? 0),
             ];
         }
@@ -259,8 +263,10 @@ function collectServerData($db, $config, $now)
 
     // Insert server-wide sample
     if ($serverInfo !== null) {
-        $totalIn = (int)($serverInfo['totalTrafficIn'] ?? $serverInfo['total_traffic_in'] ?? 0);
-        $totalOut = (int)($serverInfo['totalTrafficOut'] ?? $serverInfo['total_traffic_out'] ?? 0);
+        // Swap directions: FRP server "In"/"Out" is from proxy handler perspective,
+        // reversed relative to this machine (see comment above).
+        $totalIn = (int)($serverInfo['totalTrafficOut'] ?? $serverInfo['total_traffic_out'] ?? 0);
+        $totalOut = (int)($serverInfo['totalTrafficIn'] ?? $serverInfo['total_traffic_in'] ?? 0);
         $curConns = (int)($serverInfo['curConns'] ?? $serverInfo['cur_conns'] ?? 0);
         $clientCounts = (int)($serverInfo['clientCounts'] ?? $serverInfo['client_counts'] ?? 0);
 

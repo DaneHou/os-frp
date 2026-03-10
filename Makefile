@@ -70,6 +70,8 @@ install-plugin:
 	@mkdir -p /usr/local/etc/frp
 	@mkdir -p /var/log/frp
 	@mkdir -p /var/db/frp
+	@# Clear stale traffic DB (direction semantics changed)
+	@rm -f /var/db/frp/traffic.db
 	@echo "==> Plugin files installed"
 
 install-frp:

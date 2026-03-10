@@ -10,7 +10,8 @@
  */
 
 define('DB_PATH', '/var/db/frp/traffic.db');
-define('MIN_INTERVAL', 15); // minimum seconds between samples
+define('COLLECT_INTERVAL', 5);  // seconds between samples
+define('LOOP_DURATION', 55);   // run for 55s, cron restarts next minute
 define('RAW_RETENTION', 86400);       // 24 hours
 define('HOURLY_RETENTION', 2592000);  // 30 days
 define('DAILY_RETENTION', 31536000);  // 1 year
@@ -100,14 +101,6 @@ function initDatabase()
     return $db;
 }
 
-function shouldCollect($db)
-{
-    $result = $db->querySingle("SELECT MAX(timestamp) FROM traffic_samples");
-    if ($result === null) {
-        return true;
-    }
-    return (time() - $result) >= MIN_INTERVAL;
-}
 
 function getClientConfig()
 {
@@ -429,34 +422,40 @@ function purgeOldData($db, $now)
 
 try {
     $db = initDatabase();
-
-    if (!shouldCollect($db)) {
-        $db->close();
-        exit(0);
-    }
-
-    $now = time();
-
-    $db->exec('BEGIN TRANSACTION');
-
-    // Collect from client dashboard
     $clientConfig = getClientConfig();
-    if ($clientConfig !== null) {
-        collectClientData($db, $clientConfig, $now);
-    }
-
-    // Collect from server dashboard
     $serverConfig = getServerConfig();
-    if ($serverConfig !== null) {
-        collectServerData($db, $serverConfig, $now);
+    $startTime = time();
+    $lastAggregation = 0;
+
+    while ((time() - $startTime) < LOOP_DURATION) {
+        $now = time();
+
+        $db->exec('BEGIN TRANSACTION');
+
+        if ($clientConfig !== null) {
+            collectClientData($db, $clientConfig, $now);
+        }
+        if ($serverConfig !== null) {
+            collectServerData($db, $serverConfig, $now);
+        }
+
+        // Aggregation/cleanup once per loop (not every 5s)
+        if ($now - $lastAggregation >= 60) {
+            aggregateHourly($db, $now);
+            aggregateDaily($db, $now);
+            purgeOldData($db, $now);
+            $lastAggregation = $now;
+        }
+
+        $db->exec('COMMIT');
+
+        $elapsed = time() - $startTime;
+        if ($elapsed + COLLECT_INTERVAL >= LOOP_DURATION) {
+            break;
+        }
+        sleep(COLLECT_INTERVAL);
     }
 
-    // Aggregation and cleanup
-    aggregateHourly($db, $now);
-    aggregateDaily($db, $now);
-    purgeOldData($db, $now);
-
-    $db->exec('COMMIT');
     $db->close();
 } catch (Exception $e) {
     error_log("FRP traffic collector error: " . $e->getMessage());

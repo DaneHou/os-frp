@@ -64,6 +64,8 @@ install-plugin:
 	@# Static web assets (Chart.js)
 	@mkdir -p $(WWW_JS_DIR)
 	@cp src/opnsense/www/js/frp/*.js $(WWW_JS_DIR)/
+	@# Cron job for traffic collector (every minute)
+	@(crontab -l 2>/dev/null | grep -v 'frp collect_traffic' ; echo '* * * * * /usr/local/bin/flock -n -E 0 -o /tmp/frp_collector.lock /usr/local/sbin/configctl frp collect_traffic > /dev/null 2>&1') | crontab -
 	@# Config and log directories
 	@mkdir -p /usr/local/etc/frp
 	@mkdir -p /var/log/frp
@@ -112,6 +114,8 @@ uninstall:
 	@rm -f $(RCD_DIR)/frp
 	@rm -f $(RCD_DIR)/frp_ssserver
 	@rm -rf $(WWW_JS_DIR)
+	@# Remove cron job
+	@(crontab -l 2>/dev/null | grep -v 'frp collect_traffic') | crontab -
 	@# Remove config and runtime files
 	@rm -rf /usr/local/etc/frp
 	@rm -f /etc/rc.conf.d/frp

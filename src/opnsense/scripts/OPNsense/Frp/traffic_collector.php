@@ -211,9 +211,9 @@ function collectClientData($db, $config, $now)
             $proxies[] = [
                 'name' => $item['name'],
                 'type' => $type,
-                'traffic_in' => (int)($item['today_traffic_in'] ?? 0),
-                'traffic_out' => (int)($item['today_traffic_out'] ?? 0),
-                'cur_conns' => (int)($item['cur_conns'] ?? 0),
+                'traffic_in' => (int)($item['todayTrafficIn'] ?? $item['today_traffic_in'] ?? 0),
+                'traffic_out' => (int)($item['todayTrafficOut'] ?? $item['today_traffic_out'] ?? 0),
+                'cur_conns' => (int)($item['curConns'] ?? $item['cur_conns'] ?? 0),
             ];
         }
     }
@@ -242,9 +242,9 @@ function collectServerData($db, $config, $now)
             $proxies[] = [
                 'name' => $item['name'],
                 'type' => $type,
-                'traffic_in' => (int)($item['today_traffic_in'] ?? 0),
-                'traffic_out' => (int)($item['today_traffic_out'] ?? 0),
-                'cur_conns' => (int)($item['cur_conns'] ?? 0),
+                'traffic_in' => (int)($item['todayTrafficIn'] ?? $item['today_traffic_in'] ?? 0),
+                'traffic_out' => (int)($item['todayTrafficOut'] ?? $item['today_traffic_out'] ?? 0),
+                'cur_conns' => (int)($item['curConns'] ?? $item['cur_conns'] ?? 0),
             ];
         }
     }
@@ -253,10 +253,10 @@ function collectServerData($db, $config, $now)
 
     // Insert server-wide sample
     if ($serverInfo !== null) {
-        $totalIn = (int)($serverInfo['total_traffic_in'] ?? 0);
-        $totalOut = (int)($serverInfo['total_traffic_out'] ?? 0);
-        $curConns = (int)($serverInfo['cur_conns'] ?? 0);
-        $clientCounts = (int)($serverInfo['client_counts'] ?? 0);
+        $totalIn = (int)($serverInfo['totalTrafficIn'] ?? $serverInfo['total_traffic_in'] ?? 0);
+        $totalOut = (int)($serverInfo['totalTrafficOut'] ?? $serverInfo['total_traffic_out'] ?? 0);
+        $curConns = (int)($serverInfo['curConns'] ?? $serverInfo['cur_conns'] ?? 0);
+        $clientCounts = (int)($serverInfo['clientCounts'] ?? $serverInfo['client_counts'] ?? 0);
 
         // Compute server speed from previous sample
         $speedIn = 0;

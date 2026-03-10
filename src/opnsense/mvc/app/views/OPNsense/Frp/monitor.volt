@@ -29,6 +29,12 @@
         color: #777;
         margin-top: 5px;
     }
+    .monitor-card.card-sm .card-value {
+        font-size: 16px;
+    }
+    .monitor-card.card-sm .card-label {
+        font-size: 11px;
+    }
     .chart-container {
         position: relative;
         background: #fff;
@@ -144,10 +150,11 @@ $(document).ready(function() {
         ajaxGet('/api/frp/monitor/summary', {}, function(resp) {
             if (resp.status !== 'ok') return;
             var t = resp.totals;
+            $('#card-speed-in').text(formatSpeed(t.speed_in));
+            $('#card-speed-out').text(formatSpeed(t.speed_out));
+            $('#card-conns').text(t.cur_conns);
             $('#card-today-in').text(formatBytes(t.today_in));
             $('#card-today-out').text(formatBytes(t.today_out));
-            $('#card-speed').text(formatSpeed(t.speed_in) + ' / ' + formatSpeed(t.speed_out));
-            $('#card-conns').text(t.cur_conns);
 
             // Update proxy table
             updateProxyTable(resp.proxies);
@@ -462,20 +469,24 @@ $(document).ready(function() {
     <!-- Summary Cards -->
     <div class="monitor-cards">
         <div class="monitor-card">
-            <div class="card-value" id="card-today-in">-</div>
-            <div class="card-label">{{ lang._('Total In Today') }}</div>
+            <div class="card-value" id="card-speed-in">-</div>
+            <div class="card-label">{{ lang._('Current Speed In') }}</div>
         </div>
         <div class="monitor-card">
-            <div class="card-value" id="card-today-out">-</div>
-            <div class="card-label">{{ lang._('Total Out Today') }}</div>
-        </div>
-        <div class="monitor-card">
-            <div class="card-value" id="card-speed">-</div>
-            <div class="card-label">{{ lang._('Current Speed (In / Out)') }}</div>
+            <div class="card-value" id="card-speed-out">-</div>
+            <div class="card-label">{{ lang._('Current Speed Out') }}</div>
         </div>
         <div class="monitor-card">
             <div class="card-value" id="card-conns">-</div>
             <div class="card-label">{{ lang._('Active Connections') }}</div>
+        </div>
+        <div class="monitor-card card-sm">
+            <div class="card-value" id="card-today-in">-</div>
+            <div class="card-label">{{ lang._('Today In') }}</div>
+        </div>
+        <div class="monitor-card card-sm">
+            <div class="card-value" id="card-today-out">-</div>
+            <div class="card-label">{{ lang._('Today Out') }}</div>
         </div>
     </div>
 

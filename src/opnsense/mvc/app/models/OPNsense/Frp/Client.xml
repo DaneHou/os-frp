@@ -112,7 +112,7 @@
             <MaximumValue>1460</MaximumValue>
         </mssValue>
         <monitorInterval type="OptionField">
-            <default>5</default>
+            <default>2</default>
             <OptionValues>
                 <option1 value="1">1s</option1>
                 <option2 value="2">2s</option2>

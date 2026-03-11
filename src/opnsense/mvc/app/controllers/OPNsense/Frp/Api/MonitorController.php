@@ -156,7 +156,8 @@ class MonitorController extends ApiControllerBase
         $result = [];
         if ($interval <= 1) {
             $query = $db->query(
-                "SELECT {$tsCol} as timestamp, proxy_name, proxy_type, speed_in, speed_out, traffic_in, traffic_out, cur_conns
+                "SELECT {$tsCol} as timestamp, proxy_name, proxy_type, speed_in, speed_out,
+                        traffic_in, traffic_out, delta_in, delta_out, cur_conns
                  FROM {$table}
                  WHERE {$tsCol} >= {$since} {$proxyFilter}
                  ORDER BY {$tsCol} ASC"
@@ -165,13 +166,14 @@ class MonitorController extends ApiControllerBase
                 $result[] = $row;
             }
         } else {
-            // Group into buckets
+            // Group into buckets — use SUM(delta_in/delta_out) for accurate traffic
+            // even when FRP counters reset (midnight or restart)
             $bucketSize = (int)ceil((time() - $since) / $maxPoints);
             $query = $db->query(
                 "SELECT ({$tsCol} / {$bucketSize}) * {$bucketSize} as timestamp,
                         proxy_name, proxy_type,
                         AVG(speed_in) as speed_in, AVG(speed_out) as speed_out,
-                        MAX(traffic_in) as traffic_in, MAX(traffic_out) as traffic_out,
+                        SUM(delta_in) as bytes_in, SUM(delta_out) as bytes_out,
                         AVG(cur_conns) as cur_conns
                  FROM {$table}
                  WHERE {$tsCol} >= {$since} {$proxyFilter}
@@ -292,12 +294,13 @@ class MonitorController extends ApiControllerBase
             }
         }
 
-        // Supplement 7d: yesterday tail (rawStart to todayStart, no midnight reset)
+        // Supplement 7d: yesterday tail from raw samples (uses delta_in/delta_out
+        // which correctly handle midnight counter resets)
         $rawStart = max($weekAgo, $now - 86400);
         if ($rawStart < $todayStart) {
             $query = $db->query(
-                "SELECT proxy_name, MAX(traffic_in) - MIN(traffic_in) as bytes_in,
-                        MAX(traffic_out) - MIN(traffic_out) as bytes_out
+                "SELECT proxy_name, SUM(delta_in) as bytes_in,
+                        SUM(delta_out) as bytes_out
                  FROM traffic_samples
                  WHERE timestamp >= {$rawStart} AND timestamp < {$todayStart}
                  GROUP BY proxy_name"
@@ -343,12 +346,13 @@ class MonitorController extends ApiControllerBase
             }
         }
 
-        // Supplement 30d: yesterday tail (rawStart to todayStart, no midnight reset)
+        // Supplement 30d: yesterday tail from raw samples (uses delta_in/delta_out
+        // which correctly handle midnight counter resets)
         $rawStart30 = max($monthAgo, $now - 86400);
         if ($rawStart30 < $todayStart) {
             $query = $db->query(
-                "SELECT proxy_name, MAX(traffic_in) - MIN(traffic_in) as bytes_in,
-                        MAX(traffic_out) - MIN(traffic_out) as bytes_out
+                "SELECT proxy_name, SUM(delta_in) as bytes_in,
+                        SUM(delta_out) as bytes_out
                  FROM traffic_samples
                  WHERE timestamp >= {$rawStart30} AND timestamp < {$todayStart}
                  GROUP BY proxy_name"

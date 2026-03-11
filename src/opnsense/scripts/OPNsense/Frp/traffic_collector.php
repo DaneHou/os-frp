@@ -6,7 +6,7 @@
  * All rights reserved.
  *
  * FRP Traffic Collector — polls FRP dashboard API, stores in SQLite
- * Runs via cron every 1 minute; internally throttles to ~30s intervals.
+ * Runs via cron every 1 minute; internally loops at configurable intervals (default 2s).
  */
 
 define('DB_PATH', '/var/db/frp/traffic.db');
@@ -34,10 +34,25 @@ function initDatabase()
         proxy_type TEXT NOT NULL,
         traffic_in INTEGER NOT NULL,
         traffic_out INTEGER NOT NULL,
+        delta_in INTEGER NOT NULL DEFAULT 0,
+        delta_out INTEGER NOT NULL DEFAULT 0,
         speed_in REAL NOT NULL DEFAULT 0,
         speed_out REAL NOT NULL DEFAULT 0,
         cur_conns INTEGER NOT NULL DEFAULT 0
     )');
+
+    // Migration: add delta columns if missing (existing installs)
+    $cols = [];
+    $pragma = $db->query("PRAGMA table_info(traffic_samples)");
+    while ($col = $pragma->fetchArray(SQLITE3_ASSOC)) {
+        $cols[] = $col['name'];
+    }
+    if (!in_array('delta_in', $cols)) {
+        $db->exec('ALTER TABLE traffic_samples ADD COLUMN delta_in INTEGER NOT NULL DEFAULT 0');
+    }
+    if (!in_array('delta_out', $cols)) {
+        $db->exec('ALTER TABLE traffic_samples ADD COLUMN delta_out INTEGER NOT NULL DEFAULT 0');
+    }
 
     $db->exec('CREATE TABLE IF NOT EXISTS traffic_hourly (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -163,13 +178,13 @@ function getCollectInterval()
 {
     $configFile = '/conf/config.xml';
     if (!file_exists($configFile)) {
-        return 5;
+        return 2;
     }
     $xml = simplexml_load_file($configFile);
     if ($xml === false) {
-        return 5;
+        return 2;
     }
-    $val = (int)($xml->OPNsense->frp->client->monitorInterval ?? $xml->OPNsense->frp->server->monitorInterval ?? 5);
+    $val = (int)($xml->OPNsense->frp->client->monitorInterval ?? $xml->OPNsense->frp->server->monitorInterval ?? 2);
     return max(1, min(30, $val));
 }
 
@@ -309,8 +324,8 @@ function collectServerData($db, $config, $now)
 function insertProxySamples($db, $proxies, $now)
 {
     $insertSample = $db->prepare(
-        "INSERT INTO traffic_samples (timestamp, proxy_name, proxy_type, traffic_in, traffic_out, speed_in, speed_out, cur_conns)
-         VALUES (:ts, :name, :type, :ti, :to, :si, :so, :cc)"
+        "INSERT INTO traffic_samples (timestamp, proxy_name, proxy_type, traffic_in, traffic_out, delta_in, delta_out, speed_in, speed_out, cur_conns)
+         VALUES (:ts, :name, :type, :ti, :to, :di, :do, :si, :so, :cc)"
     );
 
     $getState = $db->prepare("SELECT last_traffic_in, last_traffic_out, last_timestamp FROM collector_state WHERE proxy_name = :name");
@@ -329,16 +344,21 @@ function insertProxySamples($db, $proxies, $now)
 
         $speedIn = 0;
         $speedOut = 0;
+        $deltaIn = 0;
+        $deltaOut = 0;
         if ($prev && $prev['last_timestamp']) {
             $dt = $now - $prev['last_timestamp'];
             if ($dt > 0) {
-                $deltaIn = $proxy['traffic_in'] - $prev['last_traffic_in'];
-                $deltaOut = $proxy['traffic_out'] - $prev['last_traffic_out'];
-                // Handle counter reset (FRP restart resets today_traffic counters)
-                if ($deltaIn >= 0) {
+                $rawDeltaIn = $proxy['traffic_in'] - $prev['last_traffic_in'];
+                $rawDeltaOut = $proxy['traffic_out'] - $prev['last_traffic_out'];
+                // Handle counter reset (FRP restart or midnight resets today_traffic counters)
+                // Negative delta means counter reset — clamp to 0
+                $deltaIn = max(0, $rawDeltaIn);
+                $deltaOut = max(0, $rawDeltaOut);
+                if ($deltaIn > 0) {
                     $speedIn = $deltaIn / $dt;
                 }
-                if ($deltaOut >= 0) {
+                if ($deltaOut > 0) {
                     $speedOut = $deltaOut / $dt;
                 }
             }
@@ -350,6 +370,8 @@ function insertProxySamples($db, $proxies, $now)
         $insertSample->bindValue(':type', $proxy['type'], SQLITE3_TEXT);
         $insertSample->bindValue(':ti', $proxy['traffic_in'], SQLITE3_INTEGER);
         $insertSample->bindValue(':to', $proxy['traffic_out'], SQLITE3_INTEGER);
+        $insertSample->bindValue(':di', $deltaIn, SQLITE3_INTEGER);
+        $insertSample->bindValue(':do', $deltaOut, SQLITE3_INTEGER);
         $insertSample->bindValue(':si', $speedIn, SQLITE3_FLOAT);
         $insertSample->bindValue(':so', $speedOut, SQLITE3_FLOAT);
         $insertSample->bindValue(':cc', $proxy['cur_conns'], SQLITE3_INTEGER);
@@ -382,12 +404,15 @@ function aggregateHourly($db, $now)
         $hourTs = $row['hour_ts'];
         $nextHour = $hourTs + 3600;
 
+        // Use SUM(delta_in/delta_out) instead of MAX-MIN of cumulative counters.
+        // delta_in/delta_out are per-sample increments that already handle counter
+        // resets (midnight reset, FRP restart) by clamping negative deltas to 0.
         $db->exec(
             "INSERT INTO traffic_hourly (hour_ts, proxy_name, proxy_type, bytes_in, bytes_out,
                 avg_speed_in, max_speed_in, avg_speed_out, max_speed_out, avg_conns, max_conns, samples)
              SELECT {$hourTs}, proxy_name, proxy_type,
-                MAX(traffic_in) - MIN(traffic_in),
-                MAX(traffic_out) - MIN(traffic_out),
+                SUM(delta_in),
+                SUM(delta_out),
                 AVG(speed_in), MAX(speed_in),
                 AVG(speed_out), MAX(speed_out),
                 AVG(cur_conns), MAX(cur_conns),

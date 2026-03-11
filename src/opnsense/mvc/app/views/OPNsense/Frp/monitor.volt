@@ -314,10 +314,12 @@ $(document).ready(function() {
                 var c = getColor(idx);
                 var points = byProxy[name];
 
-                // Use bytes_in/bytes_out for hourly/daily, compute delta for raw
+                // Use bytes_in/bytes_out for aggregated data, delta_in/delta_out for raw samples
                 var hasBytes = points.length > 0 && points[0].bytes_in !== undefined && points[0].bytes_in !== null;
+                var hasDelta = points.length > 0 && points[0].delta_in !== undefined && points[0].delta_in !== null;
 
                 if (hasBytes) {
+                    // Aggregated data (hourly/daily or downsampled buckets)
                     datasets.push({
                         label: name + ' In',
                         data: points.map(function(p) { return {x: p.timestamp * 1000, y: parseInt(p.bytes_in) || 0}; }),
@@ -330,8 +332,22 @@ $(document).ready(function() {
                         backgroundColor: c.outBg, borderColor: c.out, borderWidth: 1,
                         yAxisID: 'y', stack: 'traffic'
                     });
+                } else if (hasDelta) {
+                    // Raw samples with server-computed deltas (handles counter resets correctly)
+                    datasets.push({
+                        label: name + ' In',
+                        data: points.map(function(p) { return {x: p.timestamp * 1000, y: parseInt(p.delta_in) || 0}; }),
+                        backgroundColor: c.inBg, borderColor: c.in, borderWidth: 1,
+                        yAxisID: 'y', stack: 'traffic'
+                    });
+                    datasets.push({
+                        label: name + ' Out',
+                        data: points.map(function(p) { return {x: p.timestamp * 1000, y: parseInt(p.delta_out) || 0}; }),
+                        backgroundColor: c.outBg, borderColor: c.out, borderWidth: 1,
+                        yAxisID: 'y', stack: 'traffic'
+                    });
                 } else {
-                    // Raw samples: compute traffic deltas between consecutive points
+                    // Fallback: compute traffic deltas client-side (legacy data without delta columns)
                     var deltas = [];
                     for (var i = 1; i < points.length; i++) {
                         var dIn = Math.max(0, (parseInt(points[i].traffic_in) || 0) - (parseInt(points[i-1].traffic_in) || 0));

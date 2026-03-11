@@ -392,11 +392,14 @@ function aggregateHourly($db, $now)
 {
     $cutoff = $now - RAW_RETENTION;
 
-    // Find hours that need aggregation: raw samples older than 24h that haven't been aggregated
+    // Find COMPLETE hours older than 24h that haven't been aggregated yet.
+    // Only aggregate hours where the entire hour (hour_ts + 3600) is before the cutoff,
+    // so we never aggregate a partial hour that still has samples within retention.
     $hours = $db->query(
         "SELECT DISTINCT (timestamp / 3600) * 3600 AS hour_ts
          FROM traffic_samples
          WHERE timestamp < {$cutoff}
+         AND ((timestamp / 3600) * 3600 + 3600) <= {$cutoff}
          AND (timestamp / 3600) * 3600 NOT IN (SELECT DISTINCT hour_ts FROM traffic_hourly)"
     );
 
@@ -428,10 +431,12 @@ function aggregateDaily($db, $now)
 {
     $cutoff = $now - HOURLY_RETENTION;
 
+    // Only aggregate COMPLETE days where the entire day is before the cutoff
     $days = $db->query(
         "SELECT DISTINCT (hour_ts / 86400) * 86400 AS day_ts
          FROM traffic_hourly
          WHERE hour_ts < {$cutoff}
+         AND ((hour_ts / 86400) * 86400 + 86400) <= {$cutoff}
          AND (hour_ts / 86400) * 86400 NOT IN (SELECT DISTINCT day_ts FROM traffic_daily)"
     );
 

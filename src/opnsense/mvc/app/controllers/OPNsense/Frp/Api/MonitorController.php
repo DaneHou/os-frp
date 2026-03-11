@@ -264,10 +264,20 @@ class MonitorController extends ApiControllerBase
         $weekAgo = $now - 604800;
         $monthAgo = $now - 2592000;
 
+        // Determine boundaries to prevent double-counting between tables.
+        // hourlyBoundary: raw samples cover from this point forward, hourly covers before.
+        // dailyBoundary: hourly covers from this point forward, daily covers before.
+        $hourlyBoundary = (int)$db->querySingle(
+            "SELECT COALESCE(MAX(hour_ts) + 3600, 0) FROM traffic_hourly"
+        );
+        $dailyBoundary = (int)$db->querySingle(
+            "SELECT COALESCE(MAX(day_ts) + 86400, 0) FROM traffic_daily"
+        );
+
         // Current speed: latest sample per proxy
         $proxies = [];
         $rows = $this->queryRows($db,
-            "SELECT s.proxy_name, s.proxy_type, s.speed_in, s.speed_out, s.cur_conns, s.traffic_in, s.traffic_out
+            "SELECT s.proxy_name, s.proxy_type, s.speed_in, s.speed_out, s.cur_conns
              FROM traffic_samples s
              INNER JOIN (SELECT proxy_name, MAX(timestamp) as max_ts FROM traffic_samples GROUP BY proxy_name) latest
              ON s.proxy_name = latest.proxy_name AND s.timestamp = latest.max_ts"
@@ -279,8 +289,8 @@ class MonitorController extends ApiControllerBase
                 'speed_in' => (float)$row['speed_in'],
                 'speed_out' => (float)$row['speed_out'],
                 'cur_conns' => (int)$row['cur_conns'],
-                'today_in' => max(0, (int)$row['traffic_in']),
-                'today_out' => max(0, (int)$row['traffic_out']),
+                'today_in' => 0,
+                'today_out' => 0,
                 'week_in' => 0,
                 'week_out' => 0,
                 'month_in' => 0,
@@ -288,7 +298,22 @@ class MonitorController extends ApiControllerBase
             ];
         }
 
-        // 7-day traffic from hourly
+        // Today's traffic: SUM of deltas since midnight (not raw FRP counter,
+        // which breaks on FRP restart or timezone mismatch)
+        foreach ($this->queryRows($db,
+            "SELECT proxy_name, SUM(delta_in) as total_in, SUM(delta_out) as total_out
+             FROM traffic_samples
+             WHERE timestamp >= {$todayStart}
+             GROUP BY proxy_name"
+        ) as $row) {
+            if (isset($proxies[$row['proxy_name']])) {
+                $proxies[$row['proxy_name']]['today_in'] = max(0, (int)$row['total_in']);
+                $proxies[$row['proxy_name']]['today_out'] = max(0, (int)$row['total_out']);
+            }
+        }
+
+        // 7-day traffic: hourly (before boundary) + raw samples (from boundary onward)
+        // No overlap because each table covers a strict time range.
         foreach ($this->queryRows($db,
             "SELECT proxy_name, SUM(bytes_in) as bytes_in, SUM(bytes_out) as bytes_out
              FROM traffic_hourly
@@ -300,44 +325,20 @@ class MonitorController extends ApiControllerBase
                 $proxies[$row['proxy_name']]['week_out'] += (int)$row['bytes_out'];
             }
         }
-
-        // Supplement 7d: yesterday tail from raw samples (uses delta_in/delta_out
-        // which correctly handle midnight counter resets)
-        $rawStart = max($weekAgo, $now - 86400);
-        if ($rawStart < $todayStart) {
-            foreach ($this->queryRows($db,
-                "SELECT proxy_name, SUM(delta_in) as bytes_in,
-                        SUM(delta_out) as bytes_out
-                 FROM traffic_samples
-                 WHERE timestamp >= {$rawStart} AND timestamp < {$todayStart}
-                 GROUP BY proxy_name"
-            ) as $row) {
-                if (isset($proxies[$row['proxy_name']])) {
-                    $proxies[$row['proxy_name']]['week_in'] += max(0, (int)$row['bytes_in']);
-                    $proxies[$row['proxy_name']]['week_out'] += max(0, (int)$row['bytes_out']);
-                }
-            }
-        }
-
-        // Supplement 7d: add today (already computed from latest sample)
-        foreach ($proxies as $name => &$p) {
-            $p['week_in'] += $p['today_in'];
-            $p['week_out'] += $p['today_out'];
-        }
-        unset($p);
-
-        // 30-day traffic from hourly + daily
+        $rawWeekStart = max($weekAgo, $hourlyBoundary);
         foreach ($this->queryRows($db,
-            "SELECT proxy_name, SUM(bytes_in) as bytes_in, SUM(bytes_out) as bytes_out
-             FROM traffic_hourly
-             WHERE hour_ts >= {$monthAgo}
+            "SELECT proxy_name, SUM(delta_in) as bytes_in, SUM(delta_out) as bytes_out
+             FROM traffic_samples
+             WHERE timestamp >= {$rawWeekStart}
              GROUP BY proxy_name"
         ) as $row) {
             if (isset($proxies[$row['proxy_name']])) {
-                $proxies[$row['proxy_name']]['month_in'] += (int)$row['bytes_in'];
-                $proxies[$row['proxy_name']]['month_out'] += (int)$row['bytes_out'];
+                $proxies[$row['proxy_name']]['week_in'] += max(0, (int)$row['bytes_in']);
+                $proxies[$row['proxy_name']]['week_out'] += max(0, (int)$row['bytes_out']);
             }
         }
+
+        // 30-day traffic: daily (before dailyBoundary) + hourly (from dailyBoundary) + raw samples (from hourlyBoundary)
         foreach ($this->queryRows($db,
             "SELECT proxy_name, SUM(bytes_in) as bytes_in, SUM(bytes_out) as bytes_out
              FROM traffic_daily
@@ -349,31 +350,30 @@ class MonitorController extends ApiControllerBase
                 $proxies[$row['proxy_name']]['month_out'] += (int)$row['bytes_out'];
             }
         }
-
-        // Supplement 30d: yesterday tail from raw samples (uses delta_in/delta_out
-        // which correctly handle midnight counter resets)
-        $rawStart30 = max($monthAgo, $now - 86400);
-        if ($rawStart30 < $todayStart) {
-            foreach ($this->queryRows($db,
-                "SELECT proxy_name, SUM(delta_in) as bytes_in,
-                        SUM(delta_out) as bytes_out
-                 FROM traffic_samples
-                 WHERE timestamp >= {$rawStart30} AND timestamp < {$todayStart}
-                 GROUP BY proxy_name"
-            ) as $row) {
-                if (isset($proxies[$row['proxy_name']])) {
-                    $proxies[$row['proxy_name']]['month_in'] += max(0, (int)$row['bytes_in']);
-                    $proxies[$row['proxy_name']]['month_out'] += max(0, (int)$row['bytes_out']);
-                }
+        $hourlyMonthStart = max($monthAgo, $dailyBoundary);
+        foreach ($this->queryRows($db,
+            "SELECT proxy_name, SUM(bytes_in) as bytes_in, SUM(bytes_out) as bytes_out
+             FROM traffic_hourly
+             WHERE hour_ts >= {$hourlyMonthStart}
+             GROUP BY proxy_name"
+        ) as $row) {
+            if (isset($proxies[$row['proxy_name']])) {
+                $proxies[$row['proxy_name']]['month_in'] += (int)$row['bytes_in'];
+                $proxies[$row['proxy_name']]['month_out'] += (int)$row['bytes_out'];
             }
         }
-
-        // Supplement 30d: add today (already computed from latest sample)
-        foreach ($proxies as $name => &$p) {
-            $p['month_in'] += $p['today_in'];
-            $p['month_out'] += $p['today_out'];
+        $rawMonthStart = max($monthAgo, $hourlyBoundary);
+        foreach ($this->queryRows($db,
+            "SELECT proxy_name, SUM(delta_in) as bytes_in, SUM(delta_out) as bytes_out
+             FROM traffic_samples
+             WHERE timestamp >= {$rawMonthStart}
+             GROUP BY proxy_name"
+        ) as $row) {
+            if (isset($proxies[$row['proxy_name']])) {
+                $proxies[$row['proxy_name']]['month_in'] += max(0, (int)$row['bytes_in']);
+                $proxies[$row['proxy_name']]['month_out'] += max(0, (int)$row['bytes_out']);
+            }
         }
-        unset($p);
 
         // Compute totals
         $totalTodayIn = 0;

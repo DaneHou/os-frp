@@ -260,7 +260,7 @@ class MonitorController extends ApiControllerBase
         }
 
         $now = time();
-        $todayStart = (int)(floor($now / 86400) * 86400);
+        $todayStart = (int)strtotime('today');
         $weekAgo = $now - 604800;
         $monthAgo = $now - 2592000;
 

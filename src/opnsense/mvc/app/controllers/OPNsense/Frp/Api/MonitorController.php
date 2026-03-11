@@ -14,9 +14,40 @@ class MonitorController extends ApiControllerBase
         if (!file_exists($this->dbPath)) {
             return null;
         }
-        $db = new \SQLite3($this->dbPath, SQLITE3_OPEN_READONLY);
+        $db = new \SQLite3($this->dbPath, SQLITE3_OPEN_READWRITE);
         $db->busyTimeout(3000);
+
+        // Ensure delta columns exist (migration for existing databases)
+        $cols = [];
+        $pragma = $db->query("PRAGMA table_info(traffic_samples)");
+        if ($pragma) {
+            while ($col = $pragma->fetchArray(SQLITE3_ASSOC)) {
+                $cols[] = $col['name'];
+            }
+        }
+        if (!in_array('delta_in', $cols)) {
+            $db->exec('ALTER TABLE traffic_samples ADD COLUMN delta_in INTEGER NOT NULL DEFAULT 0');
+        }
+        if (!in_array('delta_out', $cols)) {
+            $db->exec('ALTER TABLE traffic_samples ADD COLUMN delta_out INTEGER NOT NULL DEFAULT 0');
+        }
+
         return $db;
+    }
+
+    /**
+     * Safe query wrapper — returns empty array if query fails
+     */
+    private function queryRows($db, $sql)
+    {
+        $result = [];
+        $query = $db->query($sql);
+        if ($query) {
+            while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
+                $result[] = $row;
+            }
+        }
+        return $result;
     }
 
     /**
@@ -30,14 +61,14 @@ class MonitorController extends ApiControllerBase
             return ['status' => 'ok', 'proxies' => []];
         }
 
-        $result = [];
-        $query = $db->query(
+        $rows = $this->queryRows($db,
             "SELECT DISTINCT proxy_name, proxy_type FROM traffic_samples
              UNION SELECT DISTINCT proxy_name, proxy_type FROM traffic_hourly
              UNION SELECT DISTINCT proxy_name, proxy_type FROM traffic_daily
              ORDER BY proxy_name"
         );
-        while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
+        $result = [];
+        foreach ($rows as $row) {
             $result[] = ['name' => $row['proxy_name'], 'type' => $row['proxy_type']];
         }
         $db->close();
@@ -153,23 +184,19 @@ class MonitorController extends ApiControllerBase
             $interval = (int)ceil($count / $maxPoints);
         }
 
-        $result = [];
         if ($interval <= 1) {
-            $query = $db->query(
+            return $this->queryRows($db,
                 "SELECT {$tsCol} as timestamp, proxy_name, proxy_type, speed_in, speed_out,
                         traffic_in, traffic_out, delta_in, delta_out, cur_conns
                  FROM {$table}
                  WHERE {$tsCol} >= {$since} {$proxyFilter}
                  ORDER BY {$tsCol} ASC"
             );
-            while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
-                $result[] = $row;
-            }
         } else {
             // Group into buckets — use SUM(delta_in/delta_out) for accurate traffic
             // even when FRP counters reset (midnight or restart)
             $bucketSize = (int)ceil((time() - $since) / $maxPoints);
-            $query = $db->query(
+            return $this->queryRows($db,
                 "SELECT ({$tsCol} / {$bucketSize}) * {$bucketSize} as timestamp,
                         proxy_name, proxy_type,
                         AVG(speed_in) as speed_in, AVG(speed_out) as speed_out,
@@ -180,12 +207,7 @@ class MonitorController extends ApiControllerBase
                  GROUP BY ({$tsCol} / {$bucketSize}), proxy_name
                  ORDER BY timestamp ASC"
             );
-            while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
-                $result[] = $row;
-            }
         }
-
-        return $result;
     }
 
     private function queryHourly($db, $proxy, $since, $maxPoints)
@@ -195,8 +217,7 @@ class MonitorController extends ApiControllerBase
             $proxyFilter = "AND proxy_name = '" . $db->escapeString($proxy) . "'";
         }
 
-        $result = [];
-        $query = $db->query(
+        return $this->queryRows($db,
             "SELECT hour_ts as timestamp, proxy_name, proxy_type,
                     bytes_in, bytes_out,
                     avg_speed_in as speed_in, avg_speed_out as speed_out,
@@ -206,11 +227,6 @@ class MonitorController extends ApiControllerBase
              WHERE hour_ts >= {$since} {$proxyFilter}
              ORDER BY hour_ts ASC"
         );
-        while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
-            $result[] = $row;
-        }
-
-        return $result;
     }
 
     private function queryDaily($db, $proxy, $since, $maxPoints)
@@ -220,8 +236,7 @@ class MonitorController extends ApiControllerBase
             $proxyFilter = "AND proxy_name = '" . $db->escapeString($proxy) . "'";
         }
 
-        $result = [];
-        $query = $db->query(
+        return $this->queryRows($db,
             "SELECT day_ts as timestamp, proxy_name, proxy_type,
                     bytes_in, bytes_out,
                     avg_speed_in as speed_in, avg_speed_out as speed_out,
@@ -231,11 +246,6 @@ class MonitorController extends ApiControllerBase
              WHERE day_ts >= {$since} {$proxyFilter}
              ORDER BY day_ts ASC"
         );
-        while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
-            $result[] = $row;
-        }
-
-        return $result;
     }
 
     /**
@@ -256,15 +266,13 @@ class MonitorController extends ApiControllerBase
 
         // Current speed: latest sample per proxy
         $proxies = [];
-        $query = $db->query(
+        $rows = $this->queryRows($db,
             "SELECT s.proxy_name, s.proxy_type, s.speed_in, s.speed_out, s.cur_conns, s.traffic_in, s.traffic_out
              FROM traffic_samples s
              INNER JOIN (SELECT proxy_name, MAX(timestamp) as max_ts FROM traffic_samples GROUP BY proxy_name) latest
              ON s.proxy_name = latest.proxy_name AND s.timestamp = latest.max_ts"
         );
-        while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
-            // traffic_in/traffic_out from the latest sample ARE FRP's cumulative
-            // "todayTraffic" counters — use them directly as today's total
+        foreach ($rows as $row) {
             $proxies[$row['proxy_name']] = [
                 'name' => $row['proxy_name'],
                 'type' => $row['proxy_type'],
@@ -281,13 +289,12 @@ class MonitorController extends ApiControllerBase
         }
 
         // 7-day traffic from hourly
-        $query = $db->query(
+        foreach ($this->queryRows($db,
             "SELECT proxy_name, SUM(bytes_in) as bytes_in, SUM(bytes_out) as bytes_out
              FROM traffic_hourly
              WHERE hour_ts >= {$weekAgo}
              GROUP BY proxy_name"
-        );
-        while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
+        ) as $row) {
             if (isset($proxies[$row['proxy_name']])) {
                 $proxies[$row['proxy_name']]['week_in'] += (int)$row['bytes_in'];
                 $proxies[$row['proxy_name']]['week_out'] += (int)$row['bytes_out'];
@@ -298,14 +305,13 @@ class MonitorController extends ApiControllerBase
         // which correctly handle midnight counter resets)
         $rawStart = max($weekAgo, $now - 86400);
         if ($rawStart < $todayStart) {
-            $query = $db->query(
+            foreach ($this->queryRows($db,
                 "SELECT proxy_name, SUM(delta_in) as bytes_in,
                         SUM(delta_out) as bytes_out
                  FROM traffic_samples
                  WHERE timestamp >= {$rawStart} AND timestamp < {$todayStart}
                  GROUP BY proxy_name"
-            );
-            while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
+            ) as $row) {
                 if (isset($proxies[$row['proxy_name']])) {
                     $proxies[$row['proxy_name']]['week_in'] += max(0, (int)$row['bytes_in']);
                     $proxies[$row['proxy_name']]['week_out'] += max(0, (int)$row['bytes_out']);
@@ -321,25 +327,23 @@ class MonitorController extends ApiControllerBase
         unset($p);
 
         // 30-day traffic from hourly + daily
-        $query = $db->query(
+        foreach ($this->queryRows($db,
             "SELECT proxy_name, SUM(bytes_in) as bytes_in, SUM(bytes_out) as bytes_out
              FROM traffic_hourly
              WHERE hour_ts >= {$monthAgo}
              GROUP BY proxy_name"
-        );
-        while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
+        ) as $row) {
             if (isset($proxies[$row['proxy_name']])) {
                 $proxies[$row['proxy_name']]['month_in'] += (int)$row['bytes_in'];
                 $proxies[$row['proxy_name']]['month_out'] += (int)$row['bytes_out'];
             }
         }
-        $query = $db->query(
+        foreach ($this->queryRows($db,
             "SELECT proxy_name, SUM(bytes_in) as bytes_in, SUM(bytes_out) as bytes_out
              FROM traffic_daily
              WHERE day_ts >= {$monthAgo}
              GROUP BY proxy_name"
-        );
-        while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
+        ) as $row) {
             if (isset($proxies[$row['proxy_name']])) {
                 $proxies[$row['proxy_name']]['month_in'] += (int)$row['bytes_in'];
                 $proxies[$row['proxy_name']]['month_out'] += (int)$row['bytes_out'];
@@ -350,14 +354,13 @@ class MonitorController extends ApiControllerBase
         // which correctly handle midnight counter resets)
         $rawStart30 = max($monthAgo, $now - 86400);
         if ($rawStart30 < $todayStart) {
-            $query = $db->query(
+            foreach ($this->queryRows($db,
                 "SELECT proxy_name, SUM(delta_in) as bytes_in,
                         SUM(delta_out) as bytes_out
                  FROM traffic_samples
                  WHERE timestamp >= {$rawStart30} AND timestamp < {$todayStart}
                  GROUP BY proxy_name"
-            );
-            while ($row = $query->fetchArray(SQLITE3_ASSOC)) {
+            ) as $row) {
                 if (isset($proxies[$row['proxy_name']])) {
                     $proxies[$row['proxy_name']]['month_in'] += max(0, (int)$row['bytes_in']);
                     $proxies[$row['proxy_name']]['month_out'] += max(0, (int)$row['bytes_out']);

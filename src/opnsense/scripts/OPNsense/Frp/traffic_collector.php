@@ -53,6 +53,9 @@ function initDatabase()
     if (!in_array('delta_out', $cols)) {
         $db->exec('ALTER TABLE traffic_samples ADD COLUMN delta_out INTEGER NOT NULL DEFAULT 0');
     }
+    if (!in_array('sample_interval', $cols)) {
+        $db->exec('ALTER TABLE traffic_samples ADD COLUMN sample_interval REAL NOT NULL DEFAULT 0');
+    }
 
     $db->exec('CREATE TABLE IF NOT EXISTS traffic_hourly (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -212,7 +215,7 @@ function fetchApi($config, $path)
     return json_decode($response, true);
 }
 
-function collectClientData($db, $config, $now)
+function collectClientData($db, $config, $now, $collectInterval)
 {
     $status = fetchApi($config, '/api/status');
     if ($status === null || !is_array($status)) {
@@ -239,10 +242,10 @@ function collectClientData($db, $config, $now)
         }
     }
 
-    insertProxySamples($db, $proxies, $now);
+    insertProxySamples($db, $proxies, $now, $collectInterval);
 }
 
-function collectServerData($db, $config, $now)
+function collectServerData($db, $config, $now, $collectInterval)
 {
     // Collect server info
     $serverInfo = fetchApi($config, '/api/serverinfo');
@@ -274,7 +277,7 @@ function collectServerData($db, $config, $now)
         }
     }
 
-    insertProxySamples($db, $proxies, $now);
+    insertProxySamples($db, $proxies, $now, $collectInterval);
 
     // Insert server-wide sample
     if ($serverInfo !== null) {
@@ -295,12 +298,16 @@ function collectServerData($db, $config, $now)
         if ($prev && $prev['timestamp']) {
             $dt = $now - $prev['timestamp'];
             if ($dt > 0) {
-                $deltaIn = $totalIn - $prev['total_traffic_in'];
-                $deltaOut = $totalOut - $prev['total_traffic_out'];
-                if ($deltaIn >= 0) {
+                $rawDeltaIn = $totalIn - $prev['total_traffic_in'];
+                $rawDeltaOut = $totalOut - $prev['total_traffic_out'];
+                // Handle counter reset: negative delta means counter was reset,
+                // use current value as the delta (traffic accumulated since reset)
+                $deltaIn = $rawDeltaIn >= 0 ? $rawDeltaIn : $totalIn;
+                $deltaOut = $rawDeltaOut >= 0 ? $rawDeltaOut : $totalOut;
+                if ($deltaIn > 0) {
                     $speedIn = $deltaIn / $dt;
                 }
-                if ($deltaOut >= 0) {
+                if ($deltaOut > 0) {
                     $speedOut = $deltaOut / $dt;
                 }
             }
@@ -321,11 +328,11 @@ function collectServerData($db, $config, $now)
     }
 }
 
-function insertProxySamples($db, $proxies, $now)
+function insertProxySamples($db, $proxies, $now, $collectInterval)
 {
     $insertSample = $db->prepare(
-        "INSERT INTO traffic_samples (timestamp, proxy_name, proxy_type, traffic_in, traffic_out, delta_in, delta_out, speed_in, speed_out, cur_conns)
-         VALUES (:ts, :name, :type, :ti, :to, :di, :do, :si, :so, :cc)"
+        "INSERT INTO traffic_samples (timestamp, proxy_name, proxy_type, traffic_in, traffic_out, delta_in, delta_out, speed_in, speed_out, cur_conns, sample_interval)
+         VALUES (:ts, :name, :type, :ti, :to, :di, :do, :si, :so, :cc, :dt)"
     );
 
     $getState = $db->prepare("SELECT last_traffic_in, last_traffic_out, last_timestamp FROM collector_state WHERE proxy_name = :name");
@@ -346,20 +353,34 @@ function insertProxySamples($db, $proxies, $now)
         $speedOut = 0;
         $deltaIn = 0;
         $deltaOut = 0;
+        $dt = 0;
         if ($prev && $prev['last_timestamp']) {
             $dt = $now - $prev['last_timestamp'];
             if ($dt > 0) {
+                // Filter unreliable samples from cron restart gaps
+                // (dt > 3x collect interval means a gap occurred — record delta but zero speed)
+                $isGap = ($dt > $collectInterval * 3);
+
                 $rawDeltaIn = $proxy['traffic_in'] - $prev['last_traffic_in'];
                 $rawDeltaOut = $proxy['traffic_out'] - $prev['last_traffic_out'];
                 // Handle counter reset (FRP restart or midnight resets today_traffic counters)
-                // Negative delta means counter reset — clamp to 0
-                $deltaIn = max(0, $rawDeltaIn);
-                $deltaOut = max(0, $rawDeltaOut);
-                if ($deltaIn > 0) {
-                    $speedIn = $deltaIn / $dt;
-                }
-                if ($deltaOut > 0) {
-                    $speedOut = $deltaOut / $dt;
+                // Negative delta means counter was reset — use current value as delta
+                // (traffic accumulated since reset)
+                $deltaIn = $rawDeltaIn >= 0 ? $rawDeltaIn : $proxy['traffic_in'];
+                $deltaOut = $rawDeltaOut >= 0 ? $rawDeltaOut : $proxy['traffic_out'];
+
+                if ($isGap) {
+                    // Gap sample: preserve delta for traffic totals but zero out speed
+                    $speedIn = 0;
+                    $speedOut = 0;
+                    $dt = 0; // mark as unreliable for weighted average
+                } else {
+                    if ($deltaIn > 0) {
+                        $speedIn = $deltaIn / $dt;
+                    }
+                    if ($deltaOut > 0) {
+                        $speedOut = $deltaOut / $dt;
+                    }
                 }
             }
         }
@@ -375,6 +396,7 @@ function insertProxySamples($db, $proxies, $now)
         $insertSample->bindValue(':si', $speedIn, SQLITE3_FLOAT);
         $insertSample->bindValue(':so', $speedOut, SQLITE3_FLOAT);
         $insertSample->bindValue(':cc', $proxy['cur_conns'], SQLITE3_INTEGER);
+        $insertSample->bindValue(':dt', (float)$dt, SQLITE3_FLOAT);
         $insertSample->execute();
         $insertSample->reset();
 
@@ -410,14 +432,18 @@ function aggregateHourly($db, $now)
         // Use SUM(delta_in/delta_out) instead of MAX-MIN of cumulative counters.
         // delta_in/delta_out are per-sample increments that already handle counter
         // resets (midnight reset, FRP restart) by clamping negative deltas to 0.
+        // Use weighted average (SUM(delta)/SUM(interval)) when sample_interval data
+        // is available; fall back to AVG(speed) for old data without sample_interval
         $db->exec(
             "INSERT INTO traffic_hourly (hour_ts, proxy_name, proxy_type, bytes_in, bytes_out,
                 avg_speed_in, max_speed_in, avg_speed_out, max_speed_out, avg_conns, max_conns, samples)
              SELECT {$hourTs}, proxy_name, proxy_type,
                 SUM(delta_in),
                 SUM(delta_out),
-                AVG(speed_in), MAX(speed_in),
-                AVG(speed_out), MAX(speed_out),
+                CASE WHEN SUM(sample_interval) > 0 THEN SUM(delta_in) * 1.0 / SUM(sample_interval) ELSE AVG(speed_in) END,
+                MAX(speed_in),
+                CASE WHEN SUM(sample_interval) > 0 THEN SUM(delta_out) * 1.0 / SUM(sample_interval) ELSE AVG(speed_out) END,
+                MAX(speed_out),
                 AVG(cur_conns), MAX(cur_conns),
                 COUNT(*)
              FROM traffic_samples
@@ -483,10 +509,10 @@ try {
         $db->exec('BEGIN TRANSACTION');
 
         if ($clientConfig !== null) {
-            collectClientData($db, $clientConfig, $now);
+            collectClientData($db, $clientConfig, $now, $collectInterval);
         }
         if ($serverConfig !== null) {
-            collectServerData($db, $serverConfig, $now);
+            collectServerData($db, $serverConfig, $now, $collectInterval);
         }
 
         // Aggregation/cleanup once per loop (not every 5s)

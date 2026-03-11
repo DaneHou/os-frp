@@ -31,6 +31,9 @@ class MonitorController extends ApiControllerBase
         if (!in_array('delta_out', $cols)) {
             $db->exec('ALTER TABLE traffic_samples ADD COLUMN delta_out INTEGER NOT NULL DEFAULT 0');
         }
+        if (!in_array('sample_interval', $cols)) {
+            $db->exec('ALTER TABLE traffic_samples ADD COLUMN sample_interval REAL NOT NULL DEFAULT 0');
+        }
 
         return $db;
     }
@@ -274,14 +277,36 @@ class MonitorController extends ApiControllerBase
             "SELECT COALESCE(MAX(day_ts) + 86400, 0) FROM traffic_daily"
         );
 
-        // Current speed: latest sample per proxy
+        // Current speed: weighted average over recent samples (smoothed)
+        // Try last 10s first; if no data, fall back to 60s window
         $proxies = [];
+        $since10 = $now - 10;
+        $since60 = $now - 60;
         $rows = $this->queryRows($db,
-            "SELECT s.proxy_name, s.proxy_type, s.speed_in, s.speed_out, s.cur_conns
-             FROM traffic_samples s
-             INNER JOIN (SELECT proxy_name, MAX(timestamp) as max_ts FROM traffic_samples GROUP BY proxy_name) latest
-             ON s.proxy_name = latest.proxy_name AND s.timestamp = latest.max_ts"
+            "SELECT proxy_name, proxy_type,
+                    CASE WHEN SUM(sample_interval) > 0 THEN SUM(delta_in) * 1.0 / SUM(sample_interval) ELSE AVG(speed_in) END AS speed_in,
+                    CASE WHEN SUM(sample_interval) > 0 THEN SUM(delta_out) * 1.0 / SUM(sample_interval) ELSE AVG(speed_out) END AS speed_out,
+                    MAX(cur_conns) AS cur_conns
+             FROM traffic_samples
+             WHERE timestamp >= {$since10}
+             GROUP BY proxy_name"
         );
+        // Fall back to 60s window for proxies not found in 10s window
+        $rows60 = $this->queryRows($db,
+            "SELECT proxy_name, proxy_type,
+                    CASE WHEN SUM(sample_interval) > 0 THEN SUM(delta_in) * 1.0 / SUM(sample_interval) ELSE AVG(speed_in) END AS speed_in,
+                    CASE WHEN SUM(sample_interval) > 0 THEN SUM(delta_out) * 1.0 / SUM(sample_interval) ELSE AVG(speed_out) END AS speed_out,
+                    MAX(cur_conns) AS cur_conns
+             FROM traffic_samples
+             WHERE timestamp >= {$since60}
+             GROUP BY proxy_name"
+        );
+        // Index 60s results for fallback
+        $fallback = [];
+        foreach ($rows60 as $row) {
+            $fallback[$row['proxy_name']] = $row;
+        }
+        // Build proxy map from 10s window
         foreach ($rows as $row) {
             $proxies[$row['proxy_name']] = [
                 'name' => $row['proxy_name'],
@@ -296,6 +321,24 @@ class MonitorController extends ApiControllerBase
                 'month_in' => 0,
                 'month_out' => 0,
             ];
+        }
+        // Add proxies only present in 60s fallback
+        foreach ($fallback as $name => $row) {
+            if (!isset($proxies[$name])) {
+                $proxies[$name] = [
+                    'name' => $row['proxy_name'],
+                    'type' => $row['proxy_type'],
+                    'speed_in' => (float)$row['speed_in'],
+                    'speed_out' => (float)$row['speed_out'],
+                    'cur_conns' => (int)$row['cur_conns'],
+                    'today_in' => 0,
+                    'today_out' => 0,
+                    'week_in' => 0,
+                    'week_out' => 0,
+                    'month_in' => 0,
+                    'month_out' => 0,
+                ];
+            }
         }
 
         // Today's traffic: SUM of deltas since midnight (not raw FRP counter,

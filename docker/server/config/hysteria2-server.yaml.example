@@ -1,0 +1,25 @@
+# Hysteria 2 Server Configuration
+# See: https://v2.hysteria.network/docs/
+
+listen: :443
+
+# TLS certificate (required)
+tls:
+  cert: /etc/hysteria2/cert.pem
+  key: /etc/hysteria2/key.pem
+
+auth:
+  type: password
+  password: your-auth-password
+
+# Bandwidth hints
+# bandwidth:
+#   up: 1 gbps
+#   down: 1 gbps
+
+# Masquerade (what to show when probed without valid auth)
+masquerade:
+  type: proxy
+  proxy:
+    url: https://www.bing.com
+    rewriteHost: true

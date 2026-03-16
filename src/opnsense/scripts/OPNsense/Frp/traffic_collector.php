@@ -106,6 +106,17 @@ function initDatabase()
         last_timestamp INTEGER NOT NULL
     )');
 
+    $db->exec('CREATE TABLE IF NOT EXISTS health_samples (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp INTEGER NOT NULL,
+        target_label TEXT NOT NULL,
+        target_url TEXT NOT NULL,
+        latency_ms REAL,
+        http_code INTEGER,
+        status TEXT NOT NULL,
+        error TEXT
+    )');
+
     // Indexes for query performance
     $db->exec('CREATE INDEX IF NOT EXISTS idx_samples_ts ON traffic_samples(timestamp)');
     $db->exec('CREATE INDEX IF NOT EXISTS idx_samples_proxy_ts ON traffic_samples(proxy_name, timestamp)');
@@ -114,6 +125,8 @@ function initDatabase()
     $db->exec('CREATE INDEX IF NOT EXISTS idx_daily_ts ON traffic_daily(day_ts)');
     $db->exec('CREATE INDEX IF NOT EXISTS idx_daily_proxy_ts ON traffic_daily(proxy_name, day_ts)');
     $db->exec('CREATE INDEX IF NOT EXISTS idx_server_ts ON server_samples(timestamp)');
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_health_ts ON health_samples(timestamp)');
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_health_target_ts ON health_samples(target_label, timestamp)');
 
     return $db;
 }
@@ -491,6 +504,76 @@ function purgeOldData($db, $now)
     $db->exec("DELETE FROM server_samples WHERE timestamp < " . ($now - RAW_RETENTION));
     $db->exec("DELETE FROM traffic_hourly WHERE hour_ts < " . ($now - HOURLY_RETENTION));
     $db->exec("DELETE FROM traffic_daily WHERE day_ts < " . ($now - DAILY_RETENTION));
+    $db->exec("DELETE FROM health_samples WHERE timestamp < " . ($now - RAW_RETENTION));
+}
+
+function collectHealthMetrics($db, $now)
+{
+    $configFile = '/conf/config.xml';
+    if (!file_exists($configFile)) {
+        return;
+    }
+    $xml = simplexml_load_file($configFile);
+    if ($xml === false) {
+        return;
+    }
+
+    $targets = $xml->OPNsense->frp->client->healthTargets->healthTarget ?? null;
+    if ($targets === null) {
+        return;
+    }
+
+    $stmt = $db->prepare(
+        "INSERT INTO health_samples (timestamp, target_label, target_url, latency_ms, http_code, status, error)
+         VALUES (:ts, :label, :url, :latency, :code, :status, :error)"
+    );
+
+    foreach ($targets as $target) {
+        if ((string)($target->enabled ?? '0') !== '1') {
+            continue;
+        }
+
+        $label = (string)$target->label;
+        $url = (string)$target->url;
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_NOBODY => true,
+            CURLOPT_TIMEOUT => 5,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 3,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+        ]);
+
+        $ok = curl_exec($ch);
+
+        if ($ok === false) {
+            $stmt->bindValue(':ts', $now, SQLITE3_INTEGER);
+            $stmt->bindValue(':label', $label, SQLITE3_TEXT);
+            $stmt->bindValue(':url', $url, SQLITE3_TEXT);
+            $stmt->bindValue(':latency', null, SQLITE3_NULL);
+            $stmt->bindValue(':code', 0, SQLITE3_INTEGER);
+            $stmt->bindValue(':status', 'error', SQLITE3_TEXT);
+            $stmt->bindValue(':error', curl_error($ch), SQLITE3_TEXT);
+        } else {
+            $totalTime = curl_getinfo($ch, CURLINFO_TOTAL_TIME);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $stmt->bindValue(':ts', $now, SQLITE3_INTEGER);
+            $stmt->bindValue(':label', $label, SQLITE3_TEXT);
+            $stmt->bindValue(':url', $url, SQLITE3_TEXT);
+            $stmt->bindValue(':latency', round($totalTime * 1000, 1), SQLITE3_FLOAT);
+            $stmt->bindValue(':code', (int)$httpCode, SQLITE3_INTEGER);
+            $stmt->bindValue(':status', 'ok', SQLITE3_TEXT);
+            $stmt->bindValue(':error', null, SQLITE3_NULL);
+        }
+
+        $stmt->execute();
+        $stmt->reset();
+        curl_close($ch);
+    }
 }
 
 // --- Main ---
@@ -517,6 +600,7 @@ try {
 
         // Aggregation/cleanup once per loop (not every 5s)
         if ($now - $lastAggregation >= 60) {
+            collectHealthMetrics($db, $now);
             aggregateHourly($db, $now);
             aggregateDaily($db, $now);
             purgeOldData($db, $now);

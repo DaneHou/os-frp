@@ -59,6 +59,13 @@ function frp_cron()
             'autocron' => '1',
             'command' => '/usr/local/bin/configctl frp collect_traffic',
         ],
+        [
+            'description' => 'FRP Watchdog',
+            'origin' => 'frp',
+            'freq' => '1',
+            'autocron' => '1',
+            'command' => '/usr/local/bin/configctl frp watchdog',
+        ],
     ];
 }
 

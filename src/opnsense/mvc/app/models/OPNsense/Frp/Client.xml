@@ -111,6 +111,12 @@
             <MinimumValue>536</MinimumValue>
             <MaximumValue>1460</MaximumValue>
         </mssValue>
+        <tfoEnabled type="BooleanField">
+            <default>0</default>
+        </tfoEnabled>
+        <tcpTuningEnabled type="BooleanField">
+            <default>0</default>
+        </tcpTuningEnabled>
         <monitorInterval type="OptionField">
             <default>2</default>
             <OptionValues>

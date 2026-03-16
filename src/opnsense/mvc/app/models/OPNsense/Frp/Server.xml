@@ -96,6 +96,12 @@
             <MinimumValue>536</MinimumValue>
             <MaximumValue>1460</MaximumValue>
         </mssValue>
+        <tfoEnabled type="BooleanField">
+            <default>0</default>
+        </tfoEnabled>
+        <tcpTuningEnabled type="BooleanField">
+            <default>0</default>
+        </tcpTuningEnabled>
         <kcpBindPort type="IntegerField">
             <default>0</default>
             <MinimumValue>0</MinimumValue>

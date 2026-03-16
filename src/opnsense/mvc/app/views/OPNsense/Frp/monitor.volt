@@ -63,10 +63,18 @@
         cursor: pointer;
         font-size: 12px;
     }
-    .range-btn.active {
+    .range-btn.active, .health-range-btn.active {
         background: #337ab7;
         color: #fff;
         border-color: #337ab7;
+    }
+    .health-range-btn {
+        padding: 3px 10px;
+        border: 1px solid #ccc;
+        background: #fff;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
     }
     .proxy-table {
         width: 100%;
@@ -104,6 +112,8 @@ $(document).ready(function() {
     var realtimeTimer = null;
     var summaryTimer = null;
     var proxyTableTimer = null;
+    var healthHistoryChart = null;
+    var healthHistoryRange = '24h';
 
     // --- Utility ---
     function formatBytes(bytes) {
@@ -294,6 +304,114 @@ $(document).ready(function() {
         });
     }
 
+    function initHealthHistoryChart() {
+        var ctx = document.getElementById('healthHistoryCanvas').getContext('2d');
+        healthHistoryChart = new Chart(ctx, {
+            type: 'line',
+            data: { datasets: [] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: { displayFormats: { minute: 'HH:mm', hour: 'MMM d HH:mm', day: 'MMM d' } },
+                        title: { display: false }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Latency (ms)' },
+                        ticks: {
+                            callback: function(value) { return value + ' ms'; }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                var point = ctx.raw;
+                                var label = ctx.dataset.label + ': ';
+                                if (point.y !== null) {
+                                    label += point.y.toFixed(1) + ' ms';
+                                } else {
+                                    label += 'Error';
+                                }
+                                return label;
+                            }
+                        }
+                    },
+                    legend: { position: 'top' }
+                }
+            }
+        });
+    }
+
+    function updateHealthHistoryChart() {
+        var targetFilter = $('#healthHistoryTarget').val() || '';
+        var url = '/api/frp/monitor/healthHistory?range=' + healthHistoryRange;
+        if (targetFilter) url += '&target=' + encodeURIComponent(targetFilter);
+
+        ajaxGet(url, {}, function(resp) {
+            if (resp.status !== 'ok') return;
+
+            // Populate target filter
+            var sel = $('#healthHistoryTarget');
+            var current = sel.val();
+            sel.empty().append('<option value="">All Targets</option>');
+            (resp.targets || []).forEach(function(t) {
+                sel.append('<option value="' + $('<span>').text(t).html() + '">' + $('<span>').text(t).html() + '</option>');
+            });
+            if (current) sel.val(current);
+
+            // Group by target
+            var byTarget = {};
+            (resp.data || []).forEach(function(d) {
+                if (!byTarget[d.target_label]) byTarget[d.target_label] = [];
+                byTarget[d.target_label].push(d);
+            });
+
+            var datasets = [];
+            var idx = 0;
+            var healthColors = [
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 99, 132, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(153, 102, 255, 1)',
+                'rgba(255, 159, 64, 1)',
+            ];
+            Object.keys(byTarget).sort().forEach(function(label) {
+                var c = healthColors[idx % healthColors.length];
+                var points = byTarget[label];
+                datasets.push({
+                    label: label,
+                    data: points.map(function(p) {
+                        return {
+                            x: p.timestamp * 1000,
+                            y: p.latency_ms !== null ? parseFloat(p.latency_ms) : null
+                        };
+                    }),
+                    borderColor: c,
+                    backgroundColor: c.replace('1)', '0.1)'),
+                    borderWidth: 1.5,
+                    pointRadius: 2,
+                    fill: false,
+                    tension: 0.3,
+                    spanGaps: false
+                });
+                idx++;
+            });
+
+            healthHistoryChart.data.datasets = datasets;
+
+            var unitMap = {'1h': 'minute', '6h': 'hour', '24h': 'hour', '7d': 'day'};
+            healthHistoryChart.options.scales.x.time.unit = unitMap[healthHistoryRange] || 'hour';
+            healthHistoryChart.update('none');
+        });
+    }
+
     function updateHistoryChart() {
         var histProxy = $('#historyProxyFilter').val() || '';
         var url = '/api/frp/monitor/history?range=' + historyRange;
@@ -433,6 +551,8 @@ $(document).ready(function() {
     updateSummary();
     updateRealtimeChart();
     updateHistoryChart();
+    initHealthHistoryChart();
+    updateHealthHistoryChart();
 
     // Timers
     realtimeTimer = setInterval(function() { updateRealtimeChart(); }, 2000);
@@ -550,6 +670,21 @@ $(document).ready(function() {
             }
         }
     });
+
+    // Health history controls
+    $('.health-range-btn').on('click', function() {
+        $('.health-range-btn').removeClass('active');
+        $(this).addClass('active');
+        healthHistoryRange = $(this).data('range');
+        updateHealthHistoryChart();
+    });
+
+    $('#healthHistoryTarget').on('change', function() {
+        updateHealthHistoryChart();
+    });
+
+    // Refresh health history every 60s
+    setInterval(function() { updateHealthHistoryChart(); }, 60000);
 
     // Auto-check on page load
     runHealthCheck();
@@ -691,6 +826,24 @@ $(document).ready(function() {
                     </tr>
                 </tfoot>
             </table>
+        </div>
+    </div>
+
+    <!-- Health Latency History -->
+    <div class="chart-container">
+        <div class="chart-header">
+            <h3>{{ lang._('Health Latency History') }}</h3>
+            <div class="chart-controls">
+                <select id="healthHistoryTarget" class="form-control" style="width: auto; display: inline-block; min-width: 150px;">
+                    <option value="">{{ lang._('All Targets') }}</option>
+                </select>
+                <button class="health-range-btn" data-range="1h">1h</button>
+                <button class="health-range-btn active" data-range="24h">24h</button>
+                <button class="health-range-btn" data-range="7d">7d</button>
+            </div>
+        </div>
+        <div style="height: 250px;">
+            <canvas id="healthHistoryCanvas"></canvas>
         </div>
     </div>
 

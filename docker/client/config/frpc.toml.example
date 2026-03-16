@@ -1,0 +1,38 @@
+# FRP Client Configuration
+# See: https://github.com/fatedier/frp/blob/dev/conf/frpc_full_example.toml
+
+serverAddr = "your-server-ip"
+serverPort = 7000
+
+auth.method = "token"
+auth.token = "your-secret-token"
+
+# Transport settings
+transport.protocol = "tcp"
+transport.tcpMux = true
+transport.tcpMuxKeepaliveInterval = 10
+transport.heartbeatInterval = 10
+transport.heartbeatTimeout = 30
+transport.poolCount = 5
+
+# TLS (recommended for cross-border)
+# transport.tls.enable = true
+
+# Logging
+log.to = "/var/log/frp/frpc.log"
+log.level = "info"
+
+# Admin dashboard (required for monitoring/healthcheck)
+webServer.addr = "127.0.0.1"
+webServer.port = 7400
+
+# Don't exit on login failure (retry forever)
+loginFailExit = false
+
+# Proxy definitions
+[[proxies]]
+name = "web"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 80
+remotePort = 8080

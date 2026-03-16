@@ -118,8 +118,56 @@ apply_mss() {
     fi
 }
 
+# TCP Fast Open (system-wide kernel setting)
+apply_tfo() {
+    local mode="$1"
+    local enabled=""
+    if [ -n "$mode" ]; then
+        enabled=$(get_config "//OPNsense/frp/${mode}/tfoEnabled")
+    fi
+
+    if [ "$enabled" = "1" ]; then
+        echo "Enabling TCP Fast Open..."
+        sysctl net.inet.tcp.fastopen.enabled=1 > /dev/null 2>&1
+        sysctl net.inet.tcp.fastopen.server_enable=1 > /dev/null 2>&1
+        sysctl net.inet.tcp.fastopen.client_enable=1 > /dev/null 2>&1
+        echo "TFO enabled: $(sysctl -n net.inet.tcp.fastopen.enabled)"
+    else
+        current=$(sysctl -n net.inet.tcp.fastopen.enabled 2>/dev/null)
+        if [ "$current" = "1" ]; then
+            echo "Disabling TCP Fast Open..."
+            sysctl net.inet.tcp.fastopen.enabled=0 > /dev/null 2>&1
+        fi
+    fi
+}
+
+# TCP deep tuning — buffers, window scaling, SACK (system-wide)
+apply_tcp_tuning() {
+    local mode="$1"
+    local enabled=""
+    if [ -n "$mode" ]; then
+        enabled=$(get_config "//OPNsense/frp/${mode}/tcpTuningEnabled")
+    fi
+
+    if [ "$enabled" = "1" ]; then
+        echo "Applying TCP buffer tuning..."
+        sysctl net.inet.tcp.recvbuf_max=4194304 > /dev/null 2>&1
+        sysctl net.inet.tcp.sendbuf_max=4194304 > /dev/null 2>&1
+        sysctl net.inet.tcp.rfc1323=1 > /dev/null 2>&1
+        sysctl net.inet.tcp.sack.enable=1 > /dev/null 2>&1
+        sysctl net.inet.tcp.nolocaltimewait=1 > /dev/null 2>&1
+        echo "TCP tuning applied (4MB buffers, SACK, RFC 1323)"
+    else
+        echo "Restoring default TCP buffer settings..."
+        sysctl net.inet.tcp.recvbuf_max=2097152 > /dev/null 2>&1
+        sysctl net.inet.tcp.sendbuf_max=2097152 > /dev/null 2>&1
+    fi
+}
+
 mode=$(get_active_mode)
 echo "Applying FRP network tuning (mode: ${mode:-none})..."
 apply_bbr "$mode"
 apply_mss "$mode"
+apply_tfo "$mode"
+apply_tcp_tuning "$mode"
 echo "Tuning complete."

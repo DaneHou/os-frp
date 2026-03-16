@@ -18,6 +18,31 @@
             });
         });
 
+        // Docker config export
+        $("#exportDockerConfig").click(function(){
+            $.ajax({
+                url: '/api/frp/settings/exportDockerConfig',
+                type: 'GET',
+                data: { mode: 'client' },
+                dataType: 'json',
+                success: function(resp) {
+                    if (resp.status === 'ok') {
+                        var blob = new Blob([resp.config], { type: 'text/plain' });
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = resp.filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    } else {
+                        alert(resp.message || 'Export failed');
+                    }
+                }
+            });
+        });
+
         updateServiceControlUI('frp');
     });
 </script>
@@ -29,5 +54,6 @@
     <div class="col-md-12">
         <hr />
         <button class="btn btn-primary" id="saveAct" type="button"><b>{{ lang._('Save') }}</b> <i id="saveAct_progress"></i></button>
+        <button class="btn btn-default" id="exportDockerConfig" type="button"><i class="fa fa-download"></i> {{ lang._('Export Docker Client Config') }}</button>
     </div>
 </div>

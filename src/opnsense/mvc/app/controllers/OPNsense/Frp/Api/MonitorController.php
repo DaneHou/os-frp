@@ -514,4 +514,66 @@ class MonitorController extends ApiControllerBase
 
         return ['status' => 'ok', 'results' => $results];
     }
+
+    /**
+     * GET /api/frp/monitor/healthHistory?target=&range=24h
+     * Returns historical health check latency data
+     */
+    public function healthHistoryAction()
+    {
+        $db = $this->getDb();
+        if ($db === null) {
+            return ['status' => 'ok', 'data' => [], 'targets' => []];
+        }
+
+        // Ensure health_samples table exists
+        $db->exec('CREATE TABLE IF NOT EXISTS health_samples (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp INTEGER NOT NULL,
+            target_label TEXT NOT NULL,
+            target_url TEXT NOT NULL,
+            latency_ms REAL,
+            http_code INTEGER,
+            status TEXT NOT NULL,
+            error TEXT
+        )');
+
+        $target = $this->request->get('target', 'string', '');
+        $range = $this->request->get('range', 'string', '24h');
+
+        $rangeMap = [
+            '1h' => 3600,
+            '6h' => 21600,
+            '24h' => 86400,
+            '7d' => 604800,
+        ];
+        $rangeSec = $rangeMap[$range] ?? 86400;
+        $since = time() - $rangeSec;
+
+        // Get distinct targets
+        $targets = $this->queryRows($db,
+            "SELECT DISTINCT target_label FROM health_samples WHERE timestamp >= {$since} ORDER BY target_label"
+        );
+
+        $targetFilter = '';
+        if (!empty($target)) {
+            $targetFilter = "AND target_label = '" . $db->escapeString($target) . "'";
+        }
+
+        $data = $this->queryRows($db,
+            "SELECT timestamp, target_label, latency_ms, http_code, status, error
+             FROM health_samples
+             WHERE timestamp >= {$since} {$targetFilter}
+             ORDER BY timestamp ASC"
+        );
+
+        $db->close();
+
+        return [
+            'status' => 'ok',
+            'data' => $data,
+            'targets' => array_column($targets, 'target_label'),
+            'range' => $range,
+        ];
+    }
 }

@@ -1,0 +1,32 @@
+# Hysteria 2 Client Configuration
+# See: https://v2.hysteria.network/docs/
+
+server: your-server-ip:443
+
+auth: your-auth-password
+
+# Bandwidth (Brutal congestion control)
+# Set to your actual upload/download bandwidth
+bandwidth:
+  up: 50 mbps
+  down: 100 mbps
+
+# TLS
+tls:
+  sni: your-domain.com
+  insecure: false
+
+# SOCKS5 proxy (local)
+socks5:
+  listen: 127.0.0.1:1080
+
+# HTTP proxy (local)
+http:
+  listen: 127.0.0.1:8080
+
+# Masquerade (makes traffic look like normal HTTPS)
+# masquerade:
+#   type: proxy
+#   proxy:
+#     url: https://www.bing.com
+#     rewriteHost: true

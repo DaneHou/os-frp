@@ -1,0 +1,25 @@
+# FRP Server Configuration
+# See: https://github.com/fatedier/frp/blob/dev/conf/frps_full_example.toml
+
+bindAddr = "0.0.0.0"
+bindPort = 7000
+
+auth.method = "token"
+auth.token = "your-secret-token"
+
+# QUIC support (UDP, better for lossy networks)
+# quicBindPort = 7000
+
+# Transport
+transport.tcpMux = true
+transport.tcpKeepalive = 60
+
+# Logging
+log.to = "/var/log/frp/frps.log"
+log.level = "info"
+
+# Dashboard
+webServer.addr = "0.0.0.0"
+webServer.port = 7500
+webServer.user = "admin"
+webServer.password = "your-dashboard-password"

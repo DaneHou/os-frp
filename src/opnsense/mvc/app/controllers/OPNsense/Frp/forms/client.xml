@@ -222,4 +222,18 @@
         <help>Maximum Segment Size in bytes (default: 1260, range: 536-1460).</help>
         <advanced>true</advanced>
     </field>
+    <field>
+        <id>client.tfoEnabled</id>
+        <label>Enable TCP Fast Open</label>
+        <type>checkbox</type>
+        <help>Enables TCP Fast Open (TFO) for faster connection establishment. WARNING: System-wide kernel setting affecting ALL TCP connections.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
+        <id>client.tcpTuningEnabled</id>
+        <label>Enable TCP Buffer Tuning</label>
+        <type>checkbox</type>
+        <help>Optimizes TCP buffer sizes and enables window scaling for high-latency cross-border links (4MB buffers, SACK, RFC 1323). WARNING: System-wide kernel settings.</help>
+        <advanced>true</advanced>
+    </field>
 </form>

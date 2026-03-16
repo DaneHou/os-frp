@@ -1,0 +1,36 @@
+services:
+  frp-server:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./config/frps.toml:/etc/frp/frps.toml:ro
+      - ./config/hysteria2-server.yaml:/etc/hysteria2/hysteria2-server.yaml:ro
+      - frp-data:/var/lib/frp
+      - frp-logs:/var/log/frp
+    environment:
+      - FRP_MODE=server
+      - FRP_WATCHDOG_ENABLED=true
+      - HYSTERIA2_ENABLED=false
+      - SHADOW_TLS_ENABLED=false
+      # Shadow-TLS settings (when enabled)
+      - SHADOW_TLS_LISTEN=0.0.0.0:443
+      - SHADOW_TLS_PASSWORD=
+      - SHADOW_TLS_SNI=www.microsoft.com
+      - SHADOW_TLS_BACKEND=127.0.0.1:7000
+      # Admin API
+      - FRP_ADMIN_ADDR=127.0.0.1
+      - FRP_ADMIN_PORT=7500
+      - FRP_ADMIN_USER=admin
+      - FRP_ADMIN_PWD=
+      - FRP_HEALTH_CHECK_URL=
+    env_file:
+      - ../.env
+
+volumes:
+  frp-data:
+  frp-logs:

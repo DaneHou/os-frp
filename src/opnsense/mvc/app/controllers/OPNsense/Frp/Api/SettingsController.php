@@ -132,4 +132,88 @@ class SettingsController extends ApiMutableModelControllerBase
         return ['status' => 'failed'];
     }
 
+    // --- Docker Config Export ---
+
+    public function exportDockerConfigAction()
+    {
+        $result = ['status' => 'error', 'message' => 'Invalid request'];
+
+        $mode = $this->request->get('mode', 'string', '');
+
+        if ($mode === 'client') {
+            // OPNsense runs server, export client frpc.toml for Docker peer
+            $mdl = new \OPNsense\Frp\Server();
+            $serverEnabled = (string)$mdl->enabled;
+            if ($serverEnabled !== '1') {
+                return ['status' => 'error', 'message' => 'FRP Server is not enabled'];
+            }
+
+            $bindPort = (string)($mdl->bindPort ?? '7000');
+            $authMethod = (string)($mdl->authMethod ?? '');
+            $authToken = (string)($mdl->authToken ?? '');
+            $transportTcpMux = (string)($mdl->transportTcpMux ?? '1');
+            $quicBindPort = (string)($mdl->quicBindPort ?? '0');
+
+            $toml = "# frpc.toml — Generated from OPNsense FRP Server config\n";
+            $toml .= "# Deploy this on the Docker client peer\n\n";
+            $toml .= "serverAddr = \"YOUR_SERVER_IP\"\n";
+            $toml .= "serverPort = {$bindPort}\n\n";
+
+            if ($authMethod === 'token' && !empty($authToken)) {
+                $toml .= "auth.method = \"token\"\n";
+                $toml .= "auth.token = \"{$authToken}\"\n\n";
+            }
+
+            $toml .= "transport.tcpMux = " . ($transportTcpMux === '1' ? 'true' : 'false') . "\n";
+
+            if ((int)$quicBindPort > 0) {
+                $toml .= "# QUIC is available on port {$quicBindPort}\n";
+                $toml .= "# transport.protocol = \"quic\"\n";
+            }
+
+            $toml .= "\nlog.to = \"/var/log/frp/frpc.log\"\nlog.level = \"info\"\n";
+            $toml .= "\n# Add your proxy definitions below:\n";
+            $toml .= "# [[proxies]]\n# name = \"example\"\n# type = \"tcp\"\n# localIP = \"127.0.0.1\"\n# localPort = 80\n# remotePort = 8080\n";
+
+            return ['status' => 'ok', 'config' => $toml, 'filename' => 'frpc.toml'];
+
+        } elseif ($mode === 'server') {
+            // OPNsense runs client, export server frps.toml for Docker peer
+            $mdl = $this->getModel();
+            $clientEnabled = (string)$mdl->enabled;
+            if ($clientEnabled !== '1') {
+                return ['status' => 'error', 'message' => 'FRP Client is not enabled'];
+            }
+
+            $serverPort = (string)($mdl->serverPort ?? '7000');
+            $authMethod = (string)($mdl->authMethod ?? '');
+            $authToken = (string)($mdl->authToken ?? '');
+            $transportTcpMux = (string)($mdl->transportTcpMux ?? '1');
+            $transportProtocol = (string)($mdl->transportProtocol ?? 'tcp');
+
+            $toml = "# frps.toml — Generated from OPNsense FRP Client config\n";
+            $toml .= "# Deploy this on the Docker server peer\n\n";
+            $toml .= "bindAddr = \"0.0.0.0\"\n";
+            $toml .= "bindPort = {$serverPort}\n\n";
+
+            if ($authMethod === 'token' && !empty($authToken)) {
+                $toml .= "auth.method = \"token\"\n";
+                $toml .= "auth.token = \"{$authToken}\"\n\n";
+            }
+
+            $toml .= "transport.tcpMux = " . ($transportTcpMux === '1' ? 'true' : 'false') . "\n";
+
+            if ($transportProtocol === 'quic') {
+                $toml .= "quicBindPort = {$serverPort}\n";
+            }
+
+            $toml .= "\nlog.to = \"/var/log/frp/frps.log\"\nlog.level = \"info\"\n";
+            $toml .= "\nwebServer.addr = \"0.0.0.0\"\nwebServer.port = 7500\n";
+
+            return ['status' => 'ok', 'config' => $toml, 'filename' => 'frps.toml'];
+        }
+
+        return $result;
+    }
+
 }

@@ -1,266 +1,356 @@
 # os-frp
 
-OPNsense plugin for [FRP](https://github.com/fatedier/frp) (Fast Reverse Proxy) — native FreeBSD, no Docker.
+OPNsense plugin + Docker images for [FRP](https://github.com/fatedier/frp) (Fast Reverse Proxy).
 
-Designed for **cross-border tunnel stability** (e.g., China-US) with built-in transport optimizations and network tuning.
+Designed for **cross-border tunnel stability** (e.g., China-US) with TCP tuning, smart reconnection, health monitoring, and optional GFW evasion via Hysteria 2 / shadow-TLS.
 
-## Architecture
+## Deployment Options
+
+| US Side (Server) | China Side (Client) | How |
+|------------------|--------------------|----|
+| OPNsense (frps) | Docker (frpc) | **Most common** — GUI server + lightweight client |
+| Docker (frps) | Docker (frpc) | No OPNsense needed |
+| OPNsense (frps) | OPNsense (frpc) | Both sides have OPNsense |
 
 ```
-China OPNsense (frpc)              US OPNsense (frps)
-┌──────────────────────┐           ┌──────────────────┐
-│ frpc ──── FRP tunnel ──────────→ frps               │
-│ BBR / MTU / MSS      │           │        → WAN exit │
-└──────────────────────┘           └──────────────────┘
+China (frpc)                         US (frps)
+┌────────────────────────┐           ┌──────────────────┐
+│ frpc ─── FRP tunnel ──────────────→ frps → internet   │
+│ BBR / TFO / TCP tuning │           │ BBR / TFO        │
+│ + Hysteria2 (optional) │           │ + Hysteria2      │
+│ + shadow-TLS (GFW)     │           │ + shadow-TLS     │
+└────────────────────────┘           └──────────────────┘
 ```
 
-- **China side**: frpc (client) + proxy entries + network tuning
-- **US side**: frps (server) only, traffic exits to internet
-- **Shadowsocks**: use [os-shadowsocks](https://github.com/DaneHou/os-shadowsocks) separately if needed
+## Quick Start
 
-## Features
+### Option A: Docker (easiest)
 
-| Feature | Description |
-|---------|-------------|
-| FRP Client (frpc) | Full TOML v0.60+ config via GUI |
-| FRP Server (frps) | With optional web dashboard |
-| Proxy Management | tcp, udp, http, https, stcp, xtcp, sudp, tcpmux |
-| Transport Protocols | TCP, WebSocket, WSS, KCP (UDP), QUIC (UDP) |
-| Cross-border Optimizations | tcpMux, heartbeat tuning, TLS, connection pooling, dial timeout/keepalive |
-| Network Tuning | TCP BBR, MTU clamping, MSS clamping (pf anchor) |
-| Binary Management | Auto-download frpc/frps from GitHub releases |
+Pull pre-built images from GitHub Container Registry — no building required.
 
-## Installation
+**Server (US side):**
 
-On OPNsense (FreeBSD), clone and install:
+```bash
+mkdir -p frp-server && cd frp-server
+
+# Download example configs
+curl -fSLO https://raw.githubusercontent.com/DaneHou/os-frp/main/docker/server/docker-compose.yml
+curl -fSLO https://raw.githubusercontent.com/DaneHou/os-frp/main/docker/.env.example
+mkdir -p config
+curl -fSL https://raw.githubusercontent.com/DaneHou/os-frp/main/docker/server/config/frps.toml.example -o config/frps.toml
+
+# Edit config — set your auth token
+nano config/frps.toml
+
+# Copy and edit env
+cp .env.example .env
+
+# Run
+docker compose up -d
+```
+
+**Client (China side):**
+
+```bash
+mkdir -p frp-client && cd frp-client
+
+# Download example configs
+curl -fSLO https://raw.githubusercontent.com/DaneHou/os-frp/main/docker/client/docker-compose.yml
+curl -fSLO https://raw.githubusercontent.com/DaneHou/os-frp/main/docker/.env.example
+mkdir -p config
+curl -fSL https://raw.githubusercontent.com/DaneHou/os-frp/main/docker/client/config/frpc.toml.example -o config/frpc.toml
+
+# Edit config — set server IP and auth token
+nano config/frpc.toml
+
+# Copy and edit env
+cp .env.example .env
+
+# Run
+docker compose up -d
+```
+
+**What you get out of the box:**
+- TCP Fast Open + BBR + fq pacing + 4MB buffer tuning (automatic via sysctl)
+- Watchdog with exponential backoff reconnection (0.1s → 30s)
+- Docker HEALTHCHECK on frpc/frps process + admin API
+- Optional: Hysteria 2, shadow-TLS, QUIC/TCP auto-switching (see [Advanced Features](#advanced-features))
+
+### Option B: OPNsense Plugin
+
+On OPNsense (FreeBSD):
 
 ```bash
 cd /root
 git clone https://github.com/DaneHou/os-frp.git
 cd os-frp
-
-# Full install: plugin files + FRP binaries
-make install
-
-# Or step by step:
-make install-plugin   # Install MVC files, templates, hooks, rc.d
-make install-frp      # Download frpc/frps v0.67.0
-make activate         # Clear caches, restart webgui + configd
+make install          # Plugin files + FRP binaries + activate
 ```
 
-After install, navigate to **Services > FRP Tunnel** in the OPNsense web GUI.
+Then go to **Services > FRP Tunnel** in the web GUI.
 
-## Updating
-
+**Update:**
 ```bash
-cd /root/os-frp
-git pull
-make uninstall
-make install
+cd /root/os-frp && git pull && make uninstall && make install
 ```
 
-> **Important**: Always `make uninstall` before `make install` to remove stale PHP files that break OPNsense's class autoloader.
+> Always `make uninstall` before `make install` to clear stale PHP files.
 
-## Uninstalling
-
+**Uninstall:**
 ```bash
-cd /root/os-frp
-make uninstall
+cd /root/os-frp && make uninstall
 ```
 
-This removes all plugin files, configs, PID files, logs, and restarts the web GUI.
-
-## Menu Pages
+## OPNsense GUI Pages
 
 | Page | URL | Purpose |
 |------|-----|---------|
-| Client | `/ui/frp/client` | frpc settings (server address, auth, transport) |
-| Server | `/ui/frp/server` | frps settings (bind, auth, dashboard, vhost) |
-| Proxies | `/ui/frp/proxy` | Manage tunnel entries (CRUD table) |
-| Tuning | `/ui/frp/tuning` | BBR, MTU clamping, MSS clamping |
-
-## Usage
+| Client | `/ui/frp/client` | frpc settings + proxy management |
+| Server | `/ui/frp/server` | frps settings |
+| Monitor | `/ui/frp/monitor` | Real-time speed, traffic history, health checks |
 
 ### Client Setup (China side)
 
 1. **Services > FRP Tunnel > Client**
-   - Enable FRP Client
-   - Set Server Address to your US OPNsense IP
-   - Set Server Port (default 7000)
-   - Set Authentication Token (must match server)
-   - Transport settings are pre-tuned for cross-border (tcpMux ON, heartbeat 10s, TLS ON)
-   - Click **Save**
+   - Enable, set Server Address / Port / Auth Token
+   - Click **Save** (auto-reconfigures)
 
-2. **Services > FRP Tunnel > Proxies**
-   - Click **+** to add a proxy entry
-   - Example: Name=`ss`, Type=`tcp`, Local IP=`127.0.0.1`, Local Port=`8388`, Remote Port=`8388`
+2. Add proxies in the **Proxies** section below:
+   - Example: Name=`web`, Type=`tcp`, Local=`127.0.0.1:80`, Remote=`8080`
    - Click **Save**, then **Apply**
 
-3. **Services > FRP Tunnel > Tuning** (optional)
-   - Enable BBR for better congestion control
-   - Set MTU to 1300 on WAN interface
-   - Set MSS clamp to 1260 on WAN interface
-   - Click **Save & Apply**
+3. Optional: expand **Advanced > Network Tuning**
+   - Enable BBR, TCP Fast Open, TCP Buffer Tuning
+   - Enable MSS Clamping (1260) if cross-border MTU issues
 
 ### Server Setup (US side)
 
 1. **Services > FRP Tunnel > Server**
-   - Enable FRP Server
-   - Set Bind Port (default 7000)
-   - Set same Authentication Token as client
+   - Enable, set Bind Port, Auth Token (same as client)
    - Optionally enable Web Dashboard (port 7500)
    - Click **Save**
 
+### Docker Config Export
+
+If one side is OPNsense and the other is Docker:
+- Server page → **Export Docker Client Config** (generates `frpc.toml` for the Docker peer)
+- Client page → **Export Docker Server Config** (generates `frps.toml` for the Docker peer)
+
+### Monitoring
+
+The **Monitor** page shows:
+- Real-time speed (in/out) with per-proxy breakdown
+- Historical traffic charts (1h / 24h / 7d / 30d / 1yr)
+- Per-proxy statistics table (today, 7-day, 30-day totals)
+- Health check with configurable targets (latency, HTTP status)
+- Health latency history chart (1h / 24h / 7d trends)
+
+> Requires **Admin Dashboard** enabled in Client or Server advanced settings.
+
+## Features
+
+| Feature | OPNsense | Docker |
+|---------|----------|--------|
+| FRP Client/Server | GUI config | TOML config |
+| Proxy Management | Bootgrid CRUD | Edit TOML |
+| Transport Protocols | TCP, WebSocket, WSS, KCP, QUIC | Same |
+| TCP BBR | Toggle in GUI | Automatic |
+| TCP Fast Open | Toggle in GUI | Automatic |
+| TCP Buffer Tuning (4MB) | Toggle in GUI | Automatic |
+| MSS Clamping | Toggle in GUI | N/A (host network) |
+| Watchdog (auto-restart) | Cron every 1min | Exponential backoff |
+| Traffic Monitoring | Chart.js dashboard | Via FRP admin API |
+| Health Checks | Latency history + chart | Docker HEALTHCHECK |
+| Hysteria 2 | Not available | `HYSTERIA2_ENABLED=true` |
+| shadow-TLS (GFW evasion) | Not available | `SHADOW_TLS_ENABLED=true` |
+| QUIC/TCP auto-switching | Not available | Transport probe script |
+| Docker peer config export | Export button in GUI | N/A |
+
+## Advanced Features
+
+### Hysteria 2 (Docker only)
+
+[Hysteria 2](https://v2.hysteria.network/) runs as a parallel QUIC-based tunnel alongside FRP, using Brutal congestion control optimized for lossy networks.
+
+```bash
+# Copy example config
+cp config/hysteria2.yaml.example config/hysteria2.yaml
+# Edit with your server details
+nano config/hysteria2.yaml
+
+# Enable in docker-compose environment:
+HYSTERIA2_ENABLED=true
+```
+
+Both client and server Docker images include Hysteria 2.
+
+### shadow-TLS (Docker only, GFW evasion)
+
+[shadow-TLS](https://github.com/ihciah/shadow-tls) wraps FRP traffic to look like normal HTTPS connections (e.g., to `www.microsoft.com`), defeating GFW deep packet inspection.
+
+```
+frpc → shadow-tls-client:1234 ═══internet═══> shadow-tls-server:443 → frps:7000
+       (looks like HTTPS to microsoft.com)
+```
+
+**Client side** (`docker-compose.yml` environment):
+```yaml
+- SHADOW_TLS_ENABLED=true
+- SHADOW_TLS_SERVER=your-us-server:443
+- SHADOW_TLS_PASSWORD=your-shared-secret
+- SHADOW_TLS_SNI=www.microsoft.com
+- SHADOW_TLS_LISTEN=127.0.0.1:1234
+```
+
+**Server side:**
+```yaml
+- SHADOW_TLS_ENABLED=true
+- SHADOW_TLS_LISTEN=0.0.0.0:443
+- SHADOW_TLS_PASSWORD=your-shared-secret
+- SHADOW_TLS_SNI=www.microsoft.com
+- SHADOW_TLS_BACKEND=127.0.0.1:7000
+```
+
+When shadow-TLS is enabled, set `serverAddr = "127.0.0.1"` and `serverPort = 1234` in `frpc.toml`.
+
+### QUIC vs TCP Auto-Switching (Docker client only)
+
+The transport probe script runs every 5 minutes, testing TCP and QUIC latency to the server. After 3 consecutive probes favor one protocol, the watchdog switches `frpc.toml` on next restart. Requires `FRP_SERVER_ADDR`, `FRP_QUIC_PORT` environment variables.
+
+## Transport Protocols
+
+| Protocol | Underlying | GFW Resistance | Speed | Notes |
+|----------|-----------|----------------|-------|-------|
+| **TCP** | TCP | Low | Baseline | Default. Easy to fingerprint |
+| **WebSocket** | TCP | Medium | ~TCP | Looks like HTTP upgrade |
+| **WSS** | TCP+TLS | **High** | ~TCP | Looks like HTTPS. **Best for GFW evasion** |
+| **KCP** | UDP | Medium-High | **Fastest** | Trades bandwidth for latency |
+| **QUIC** | UDP | Medium-High | Fast | Built-in TLS 1.3, 0-RTT reconnect |
+
+**Recommendation:** Start with **WSS**. If slow on lossy links, try **QUIC** or **KCP**. If ISP throttles UDP, stick with WSS. For maximum GFW resistance, use **shadow-TLS** (Docker).
+
+## Network Tuning
+
+| Setting | What it does | OPNsense | Docker |
+|---------|-------------|----------|--------|
+| TCP BBR | Modern congestion control, better throughput on lossy links | `kldload tcp_bbr` | `sysctl tcp_congestion_control=bbr` |
+| TCP Fast Open | Skip 1 RTT on connection setup | `sysctl net.inet.tcp.fastopen` | `echo 3 > tcp_fastopen` |
+| TCP Buffers 4MB | Large windows for high BDP links (100Mbps × 200ms RTT) | `sysctl recvbuf_max/sendbuf_max` | `echo ... > tcp_rmem/tcp_wmem` |
+| SACK | Selective acknowledgment, reduces retransmission | `sysctl sack.enable` | `echo 1 > tcp_sack` |
+| fq pacing | Fair queue + BBR pacing, prevents burst losses | N/A | `tc qdisc fq pacing` |
+| MSS Clamping | Fix MTU issues on cross-border PPPoE links | pf anchor `frp_mss` | N/A |
+
 ## How It Works
 
-### Data Flow
+### Config Generation (OPNsense)
 
 ```
-User saves in GUI
-    → API controller validates & saves to config.xml
-    → Click Apply triggers /api/frp/service/reconfigure
-    → OPNsense template engine generates TOML config from config.xml
-    → configd restarts frpc/frps with new config
+User saves in GUI → API validates → config.xml → template engine → TOML config → configd restarts frp
 ```
-
-### Config Generation
-
-OPNsense's template engine (Jinja2) reads model data from `config.xml` and generates:
 
 | Template | Output | Purpose |
 |----------|--------|---------|
 | `frpc.toml` | `/usr/local/etc/frp/frpc.toml` | frpc configuration |
 | `frps.toml` | `/usr/local/etc/frp/frps.toml` | frps configuration |
-| `frp_rc` | `/etc/rc.conf.d/frp` | rc.d enable flag + mode (client/server) |
+| `frp_rc` | `/etc/rc.conf.d/frp` | rc.d enable flag + mode |
 
-### MVC Structure
+### Docker Watchdog
 
 ```
-Models (config.xml schema)     API Controllers              UI Controllers
-┌─────────────┐                ┌──────────────────────┐     ┌──────────────────┐
-│ Client.xml  │◄──────────────│ SettingsController    │     │ ClientController │
-│  + proxies  │                │  getClient/setClient  │     │ ServerController │
-├─────────────┤                │  getServer/setServer  │     │ ProxyController  │
-│ Server.xml  │◄──────────────│  getTuning/setTuning  │     │ TuningController │
-├─────────────┤                ├──────────────────────┤     └──────────────────┘
-│ Tuning.xml  │                │ ProxyController      │
-└─────────────┘                │  searchItem/CRUD     │
-                               ├──────────────────────┤
-                               │ ServiceController    │
-                               │  reconfigure/status  │
-                               └──────────────────────┘
+entrypoint.sh → sysctl tuning → watchdog.sh
+                                  ├── shadow-tls (if enabled)
+                                  ├── hysteria2 (if enabled)
+                                  └── frpc/frps (with exponential backoff)
 ```
 
-- **Models**: 3 separate XML schemas (Client includes proxies ArrayField)
-- **API SettingsController**: Single controller for all flat settings (avoids name collision with UI controllers)
-- **API ProxyController**: CRUD for proxy ArrayField entries
-- **API ServiceController**: Service start/stop/restart/reconfigure (must be named `ServiceController` for `updateServiceControlUI()`)
-- **UI Controllers**: One per page, renders volt template with form
+## API Routes (OPNsense)
 
-### Network Tuning
-
-| Setting | Implementation | Notes |
-|---------|---------------|-------|
-| TCP BBR | `kldload tcp_bbr` + `sysctl net.inet.tcp.functions_default=bbr` | FreeBSD kernel module |
-| MTU Clamp | `ifconfig <iface> mtu <value>` | Applied to resolved OPNsense interface |
-| MSS Clamp | `pfctl -a frp_mss -f -` with scrub rule | Uses pf anchor, doesn't touch main ruleset |
-
-### Transport Protocols
-
-| Protocol | Underlying | GFW Resistance | Speed | Reliability | Notes |
-|----------|-----------|----------------|-------|-------------|-------|
-| **TCP** | TCP | Low | Baseline | High | Default. Plain TCP, easy to fingerprint and throttle |
-| **WebSocket** | TCP | Medium | ~TCP | High | Wraps FRP in WS frames. Looks like HTTP upgrade traffic |
-| **WSS** | TCP+TLS | **High** | ~TCP | High | WebSocket over TLS. Looks like normal HTTPS. **Best for GFW evasion** |
-| **KCP** | **UDP** | Medium-High | **Fastest** | Medium | UDP-based ARQ protocol. Trades bandwidth for latency. GFW less aggressive on UDP |
-| **QUIC** | **UDP** | Medium-High | Fast | Medium-High | Google's UDP transport. Built-in TLS 1.3, 0-RTT reconnect |
-
-**Choosing a protocol for China-US tunnels:**
-
-- **WSS (recommended starting point)**: Most reliable for GFW evasion. Traffic is indistinguishable from normal HTTPS browsing. Works on any port (not just 443). Put Caddy in front as reverse proxy for extra camouflage. Downside: TCP head-of-line blocking on lossy links.
-
-- **KCP (try if WSS is slow)**: UDP-based, avoids TCP head-of-line blocking on lossy cross-border links. Can be 30-50% faster than TCP on high-loss paths. Downside: uses 2-3x bandwidth (sends redundant data), and some networks block/throttle UDP. Server needs `kcpBindPort` configured.
-
-- **QUIC (modern alternative to KCP)**: Similar UDP benefits as KCP but with built-in TLS 1.3 and smarter congestion control. Less bandwidth waste than KCP. Server needs `quicBindPort` configured. Still relatively new in FRP.
-
-- **WebSocket**: Only useful if you need HTTP-compatible transport but can't use TLS (rare). Otherwise just use WSS.
-
-- **TCP**: Only for trusted networks or when nothing else works. Easy for GFW to fingerprint and throttle.
-
-**Practical recommendation**: Start with **WSS**. If you notice speed issues (especially on lossy links), try **KCP** or **QUIC** as they avoid TCP's head-of-line blocking. If your ISP throttles UDP, stick with WSS.
-
-### Cross-border Transport Defaults
-
-| Setting | Default | Why |
-|---------|---------|-----|
-| tcpMux | ON | Multiplexes connections over single TCP stream |
-| tcpMuxKeepalive | 10s | Keeps GFW from killing idle connections |
-| heartbeatInterval | 10s | Fast detection of tunnel loss |
-| heartbeatTimeout | 30s | Reasonable timeout before reconnect |
-| TLS | OFF | Enable to encrypt tunnel metadata (OFF by default to avoid double encryption with WSS) |
-| loginFailExit | OFF | Auto-retry on auth failure (network blips) |
-| poolCount | 5 | Pre-established connections reduce latency |
-| dialServerTimeout | 10s | Connection timeout (increase for unstable links) |
-| dialServerKeepalive | 7200s | TCP keepalive for server connection (-1 to disable) |
-
-## Binary Versions
-
-| Binary | Version | Source |
-|--------|---------|--------|
-| frpc/frps | v0.67.0 | [fatedier/frp](https://github.com/fatedier/frp) |
-
-Binaries are installed to `/usr/local/bin/` (FreeBSD amd64).
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/frp/settings/getClient` | Get client settings |
+| POST | `/api/frp/settings/setClient` | Save client settings |
+| GET | `/api/frp/settings/getServer` | Get server settings |
+| POST | `/api/frp/settings/setServer` | Save server settings |
+| GET | `/api/frp/settings/exportDockerConfig?mode=client\|server` | Export Docker peer config |
+| POST | `/api/frp/proxy/searchItem` | List proxies |
+| POST | `/api/frp/proxy/addItem` | Add proxy |
+| POST | `/api/frp/service/reconfigure` | Apply config + restart |
+| POST | `/api/frp/service/status` | Service status |
+| GET | `/api/frp/monitor/realtime` | Real-time speed data |
+| GET | `/api/frp/monitor/history` | Historical traffic |
+| GET | `/api/frp/monitor/summary` | Dashboard summary |
+| GET | `/api/frp/monitor/healthcheck` | Run health checks |
+| GET | `/api/frp/monitor/healthHistory` | Health latency history |
 
 ## File Structure
 
 ```
 os-frp/
-├── Makefile                           # install/uninstall/activate
-├── pkg-descr                          # Package description
-├── README.md                          # This file
-└── src/
-    ├── etc/inc/plugins.inc.d/
-    │   └── frp.inc                    # Plugin hooks (services, syslog)
+├── Makefile                              # OPNsense install/uninstall
+├── README.md
+├── LICENSE                               # BSD-2-Clause
+├── .github/workflows/
+│   └── docker-build.yml                  # CI: build + push Docker images
+├── docker/                               # Docker deployment
+│   ├── .env.example
+│   ├── docker-compose.example.yml        # Pre-built image compose
+│   ├── client/
+│   │   ├── Dockerfile
+│   │   ├── docker-compose.yml            # Build-from-source compose
+│   │   └── config/
+│   │       ├── frpc.toml.example
+│   │       ├── hysteria2.yaml.example
+│   │       └── shadow-tls.env.example
+│   ├── server/
+│   │   ├── Dockerfile
+│   │   ├── docker-compose.yml
+│   │   └── config/
+│   │       ├── frps.toml.example
+│   │       ├── hysteria2-server.yaml.example
+│   │       └── shadow-tls.env.example
+│   └── shared/
+│       ├── entrypoint.sh                 # TCP tuning + launch watchdog
+│       └── scripts/
+│           ├── watchdog.sh               # Process manager + backoff
+│           ├── healthcheck.sh            # Docker HEALTHCHECK
+│           └── transport_probe.sh        # QUIC vs TCP auto-switching
+└── src/                                  # OPNsense plugin
+    ├── etc/inc/plugins.inc.d/frp.inc     # Plugin hooks + cron
     ├── opnsense/
     │   ├── mvc/app/
     │   │   ├── controllers/OPNsense/Frp/
-    │   │   │   ├── ClientController.php       # UI: client page
-    │   │   │   ├── ServerController.php       # UI: server page
-    │   │   │   ├── ProxyController.php        # UI: proxy page
-    │   │   │   ├── TuningController.php       # UI: tuning page
+    │   │   │   ├── ClientController.php
+    │   │   │   ├── ServerController.php
     │   │   │   ├── Api/
-    │   │   │   │   ├── SettingsController.php # API: get/set all settings
-    │   │   │   │   ├── ProxyController.php    # API: proxy CRUD
-    │   │   │   │   └── ServiceController.php  # API: service control
+    │   │   │   │   ├── SettingsController.php
+    │   │   │   │   ├── ProxyController.php
+    │   │   │   │   ├── ServiceController.php
+    │   │   │   │   └── MonitorController.php
     │   │   │   └── forms/
-    │   │   │       ├── client.xml             # Client form fields
-    │   │   │       ├── server.xml             # Server form fields
-    │   │   │       ├── proxy.xml              # Proxy dialog fields
-    │   │   │       └── tuning.xml             # Tuning form fields
+    │   │   │       ├── client.xml
+    │   │   │       ├── server.xml
+    │   │   │       └── proxy.xml
     │   │   ├── models/OPNsense/Frp/
-    │   │   │   ├── Client.php / Client.xml    # Client + proxies model
-    │   │   │   ├── Server.php / Server.xml    # Server model
-    │   │   │   ├── Tuning.php / Tuning.xml    # Tuning model
-    │   │   │   ├── ACL/ACL.xml                # Access control
-    │   │   │   └── Menu/Menu.xml              # Services menu
+    │   │   │   ├── Client.xml / Client.php
+    │   │   │   ├── Server.xml / Server.php
+    │   │   │   ├── ACL/ACL.xml
+    │   │   │   └── Menu/Menu.xml
     │   │   └── views/OPNsense/Frp/
-    │   │       ├── client.volt                # Client settings page
-    │   │       ├── server.volt                # Server settings page
-    │   │       ├── proxy.volt                 # Proxy bootgrid page
-    │   │       └── tuning.volt                # Tuning page
+    │   │       ├── client.volt
+    │   │       ├── server.volt
+    │   │       └── monitor.volt
     │   ├── scripts/OPNsense/Frp/
-    │   │   ├── setup.sh                       # Binary download script
-    │   │   └── apply_tuning.sh                # BBR/MTU/MSS script
+    │   │   ├── setup.sh                  # Binary download
+    │   │   ├── apply_tuning.sh           # BBR/TFO/TCP/MSS
+    │   │   ├── watchdog.sh               # Process watchdog
+    │   │   └── traffic_collector.php     # Traffic + health metrics
     │   └── service/
-    │       ├── conf/actions.d/
-    │       │   └── actions_frp.conf           # configd actions
+    │       ├── conf/actions.d/actions_frp.conf
     │       └── templates/OPNsense/Frp/
-    │           ├── +TARGETS                   # Template → file mapping
-    │           ├── frpc.toml                  # frpc config template
-    │           ├── frps.toml                  # frps config template
-    │           └── frp_rc                     # rc.conf.d template
-    └── usr/local/etc/rc.d/
-        └── frp                                # rc.d service script
+    │           ├── frpc.toml
+    │           ├── frps.toml
+    │           └── frp_rc
+    └── usr/local/etc/rc.d/frp
 ```
 
 ## Troubleshooting
@@ -269,28 +359,36 @@ os-frp/
 ```bash
 make activate   # Clears caches + restarts webgui
 ```
-Then Ctrl+Shift+R in the browser.
+Then Ctrl+Shift+R in browser.
 
 ### "Endpoint not found" errors
-Old PHP files from previous installs cached by opcache:
 ```bash
-make uninstall
-make install    # Clean install with activate
+make uninstall && make install   # Clean install
 ```
 
-### Check FRP logs
+### Check logs
 ```bash
-cat /var/log/frp/frpc.log   # Client log
-cat /var/log/frp/frps.log   # Server log
+# OPNsense
+cat /var/log/frp/frpc.log
+cat /var/log/frp/frps.log
+cat /var/log/frp/watchdog.log
+
+# Docker
+docker compose logs -f
+docker compose exec frp-client cat /var/log/frp/watchdog.log
 ```
 
 ### Check generated config
 ```bash
+# OPNsense
 cat /usr/local/etc/frp/frpc.toml
 cat /usr/local/etc/frp/frps.toml
+
+# Docker
+docker compose exec frp-client cat /etc/frp/frpc.toml
 ```
 
-### Manual service control
+### Manual service control (OPNsense)
 ```bash
 configctl frp start
 configctl frp stop
@@ -298,6 +396,14 @@ configctl frp restart
 configctl frp status
 ```
 
+## Binary Versions
+
+| Binary | Version | Source |
+|--------|---------|--------|
+| frpc/frps | v0.67.0 | [fatedier/frp](https://github.com/fatedier/frp) |
+| Hysteria 2 | v2.5.1 | [apernet/hysteria](https://github.com/apernet/hysteria) (Docker only) |
+| shadow-TLS | v0.2.25 | [ihciah/shadow-tls](https://github.com/ihciah/shadow-tls) (Docker only) |
+
 ## License
 
-BSD-2-Clause
+[BSD-2-Clause](LICENSE)

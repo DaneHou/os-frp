@@ -1,0 +1,84 @@
+# =============================================================================
+# FRP Tunnel — Pre-built Image Example
+# =============================================================================
+# Use this if you just want to pull and run without building locally.
+#
+# Quick start:
+#   1. Copy this file: cp docker-compose.example.yml docker-compose.yml
+#   2. Create config:  cp client/config/frpc.toml.example client/config/frpc.toml
+#      (or server)     cp server/config/frps.toml.example server/config/frps.toml
+#   3. Edit config with your server address and token
+#   4. Copy .env:      cp .env.example .env
+#   5. Run:            docker compose up -d
+#
+# Images are built automatically by GitHub Actions and hosted on ghcr.io.
+# Replace "danehou" with the actual GitHub username/org if different.
+# =============================================================================
+
+services:
+  # === FRP Client (deploy on China side) ===
+  frp-client:
+    image: ghcr.io/danehou/frp-client:latest
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./client/config/frpc.toml:/etc/frp/frpc.toml:ro
+      # Uncomment if using Hysteria2:
+      # - ./client/config/hysteria2.yaml:/etc/hysteria2/hysteria2.yaml:ro
+      - frp-client-data:/var/lib/frp
+      - frp-client-logs:/var/log/frp
+    environment:
+      - FRP_MODE=client
+      - FRP_WATCHDOG_ENABLED=true
+      - HYSTERIA2_ENABLED=false
+      - SHADOW_TLS_ENABLED=false
+      # Admin API (for health checks + monitoring)
+      - FRP_ADMIN_ADDR=127.0.0.1
+      - FRP_ADMIN_PORT=7400
+      # Uncomment for shadow-TLS (GFW evasion):
+      # - SHADOW_TLS_ENABLED=true
+      # - SHADOW_TLS_SERVER=us-server:443
+      # - SHADOW_TLS_PASSWORD=your-password
+      # - SHADOW_TLS_SNI=www.microsoft.com
+      # - SHADOW_TLS_LISTEN=127.0.0.1:1234
+    profiles:
+      - client
+
+  # === FRP Server (deploy on US side) ===
+  frp-server:
+    image: ghcr.io/danehou/frp-server:latest
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./server/config/frps.toml:/etc/frp/frps.toml:ro
+      # Uncomment if using Hysteria2:
+      # - ./server/config/hysteria2-server.yaml:/etc/hysteria2/hysteria2-server.yaml:ro
+      - frp-server-data:/var/lib/frp
+      - frp-server-logs:/var/log/frp
+    environment:
+      - FRP_MODE=server
+      - FRP_WATCHDOG_ENABLED=true
+      - HYSTERIA2_ENABLED=false
+      - SHADOW_TLS_ENABLED=false
+      # Admin API
+      - FRP_ADMIN_ADDR=127.0.0.1
+      - FRP_ADMIN_PORT=7500
+      - FRP_ADMIN_USER=admin
+      # Uncomment for shadow-TLS:
+      # - SHADOW_TLS_ENABLED=true
+      # - SHADOW_TLS_LISTEN=0.0.0.0:443
+      # - SHADOW_TLS_PASSWORD=your-password
+      # - SHADOW_TLS_SNI=www.microsoft.com
+      # - SHADOW_TLS_BACKEND=127.0.0.1:7000
+    profiles:
+      - server
+
+volumes:
+  frp-client-data:
+  frp-client-logs:
+  frp-server-data:
+  frp-server-logs:

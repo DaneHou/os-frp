@@ -3,7 +3,7 @@ FROM alpine:3.19
 ARG FRP_VERSION=0.67.0
 ARG HYSTERIA2_VERSION=2.5.1
 ARG SHADOW_TLS_VERSION=0.2.25
-ARG TARGETARCH=amd64
+ARG TARGETARCH
 
 # Install dependencies
 RUN apk add --no-cache \
@@ -27,8 +27,9 @@ RUN curl -fSL "https://github.com/apernet/hysteria/releases/download/app%2Fv${HY
     && chmod +x /usr/local/bin/hysteria2 \
     || echo "WARN: Hysteria2 download failed, feature will be unavailable"
 
-# Download shadow-tls
-RUN curl -fSL "https://github.com/ihciah/shadow-tls/releases/download/v${SHADOW_TLS_VERSION}/shadow-tls-x86_64-unknown-linux-musl" \
+# Download shadow-tls (map TARGETARCH to shadow-tls naming)
+RUN STLS_ARCH=$(case "${TARGETARCH}" in arm64) echo "aarch64";; *) echo "x86_64";; esac) \
+    && curl -fSL "https://github.com/ihciah/shadow-tls/releases/download/v${SHADOW_TLS_VERSION}/shadow-tls-${STLS_ARCH}-unknown-linux-musl" \
     -o /usr/local/bin/shadow-tls \
     && chmod +x /usr/local/bin/shadow-tls \
     || echo "WARN: shadow-tls download failed, feature will be unavailable"

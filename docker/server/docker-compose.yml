@@ -9,7 +9,8 @@ services:
       - NET_ADMIN
     volumes:
       - ./config/frps.toml:/etc/frp/frps.toml:ro
-      - ./config/hysteria2-server.yaml:/etc/hysteria2/hysteria2-server.yaml:ro
+      # Uncomment if using Hysteria2:
+      # - ./config/hysteria2-server.yaml:/etc/hysteria2/hysteria2-server.yaml:ro
       - frp-data:/var/lib/frp
       - frp-logs:/var/log/frp
     environment:

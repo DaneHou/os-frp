@@ -86,3 +86,10 @@ archives/*
 
 # MCP
 mcp-shell.log
+
+# Docker runtime configs (contain secrets — only .example files are tracked)
+docker/client/config/frpc.toml
+docker/client/config/hysteria2.yaml
+docker/server/config/frps.toml
+docker/server/config/hysteria2-server.yaml
+docker/.env

@@ -1,22 +1,27 @@
-# Hysteria 2 Server Configuration
-# See: https://v2.hysteria.network/docs/
+# Hysteria 2 服务端配置 / Hysteria 2 Server Configuration
+# 完整参考 / Full reference: https://v2.hysteria.network/docs/
 
+# 监听端口 / Listen port
 listen: :443
 
-# TLS certificate (required)
+# TLS 证书 (必须) / TLS certificate (required)
+# 可用 Let's Encrypt 免费获取 / Can use Let's Encrypt for free
 tls:
   cert: /etc/hysteria2/cert.pem
   key: /etc/hysteria2/key.pem
 
+# 认证 / Authentication
 auth:
   type: password
-  password: your-auth-password
+  password: your-auth-password   # 必须和客户端一致 / Must match client
 
-# Bandwidth hints
+# 带宽限制 (可选，限制每个客户端的最大带宽)
+# Bandwidth limit (optional, per-client max bandwidth)
 # bandwidth:
 #   up: 1 gbps
 #   down: 1 gbps
 
+# 流量伪装 (当无有效认证的探测到来时显示的内容)
 # Masquerade (what to show when probed without valid auth)
 masquerade:
   type: proxy

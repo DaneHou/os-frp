@@ -1,24 +1,29 @@
-# FRP Server Configuration
-# See: https://github.com/fatedier/frp/blob/dev/conf/frps_full_example.toml
+# FRP 服务端配置 / FRP Server Configuration
+# 完整参考 / Full reference: https://github.com/fatedier/frp/blob/dev/conf/frps_full_example.toml
 
+# 监听地址和端口 / Listen address and port
 bindAddr = "0.0.0.0"
 bindPort = 7000
 
+# 认证 (必须和客户端一致) / Authentication (must match client)
 auth.method = "token"
 auth.token = "your-secret-token"
 
-# QUIC support (UDP, better for lossy networks)
+# QUIC 支持 (UDP，适合丢包网络) / QUIC support (UDP, better for lossy networks)
+# 取消注释启用，客户端 transport.protocol 改为 "quic"
+# Uncomment to enable, set client transport.protocol to "quic"
 # quicBindPort = 7000
 
-# Transport
+# 传输设置 / Transport settings
 transport.tcpMux = true
 transport.tcpKeepalive = 60
 
-# Logging
+# 日志 / Logging
 log.to = "/var/log/frp/frps.log"
 log.level = "info"
 
-# Dashboard
+# 管理面板 / Dashboard
+# 用于监控连接状态和健康检查 / For monitoring connections and health checks
 webServer.addr = "0.0.0.0"
 webServer.port = 7500
 webServer.user = "admin"

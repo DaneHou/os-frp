@@ -20,7 +20,8 @@ FRP_VERSION=		0.67.0
 FRP_ARCH=		freebsd_amd64
 FRP_URL=		https://github.com/fatedier/frp/releases/download/v$(FRP_VERSION)/frp_$(FRP_VERSION)_$(FRP_ARCH).tar.gz
 
-.PHONY: install install-plugin install-frp activate uninstall reinstall clean
+.PHONY: install install-plugin install-frp activate uninstall reinstall clean \
+	frps-docker frpc-docker frps-docker-stop frpc-docker-stop frps-docker-logs frpc-docker-logs
 
 install: install-plugin install-frp activate
 	@echo "==> Full installation complete"
@@ -136,3 +137,36 @@ reinstall: uninstall install
 
 clean:
 	@rm -rf /tmp/frp-install
+
+# =============================================================================
+# Docker targets
+# =============================================================================
+# Quick start:
+#   make frps-docker    — build & start FRP server (US side)
+#   make frpc-docker    — build & start FRP client (China side)
+#
+# First run will auto-create config from examples if missing.
+
+frps-docker:
+	@echo "==> Starting FRP Server (Docker)..."
+	@cd docker && test -f .env || cp .env.example .env
+	@cd docker/server/config && test -f frps.toml || (cp frps.toml.example frps.toml && echo "==> Created frps.toml from example — edit docker/server/config/frps.toml with your settings")
+	@cd docker/server && docker compose up -d --build
+
+frpc-docker:
+	@echo "==> Starting FRP Client (Docker)..."
+	@cd docker && test -f .env || cp .env.example .env
+	@cd docker/client/config && test -f frpc.toml || (cp frpc.toml.example frpc.toml && echo "==> Created frpc.toml from example — edit docker/client/config/frpc.toml with your settings")
+	@cd docker/client && docker compose up -d --build
+
+frps-docker-stop:
+	@cd docker/server && docker compose down
+
+frpc-docker-stop:
+	@cd docker/client && docker compose down
+
+frps-docker-logs:
+	@cd docker/server && docker compose logs -f
+
+frpc-docker-logs:
+	@cd docker/client && docker compose logs -f

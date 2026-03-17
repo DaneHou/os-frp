@@ -1,29 +1,34 @@
-# Hysteria 2 Client Configuration
-# See: https://v2.hysteria.network/docs/
+# Hysteria 2 客户端配置 / Hysteria 2 Client Configuration
+# 完整参考 / Full reference: https://v2.hysteria.network/docs/
 
+# 服务器地址 (填你的美国服务器 IP:端口)
+# Server address (your US server IP:port)
 server: your-server-ip:443
 
+# 认证密码 (必须和服务端一致) / Auth password (must match server)
 auth: your-auth-password
 
-# Bandwidth (Brutal congestion control)
-# Set to your actual upload/download bandwidth
+# 带宽设置 (Brutal 拥塞控制的核心参数)
+# Bandwidth (core parameter for Brutal congestion control)
+# 填写你的实际上下行带宽 / Set to your actual upload/download bandwidth
 bandwidth:
   up: 50 mbps
   down: 100 mbps
 
-# TLS
+# TLS 设置 / TLS settings
 tls:
   sni: your-domain.com
-  insecure: false
+  insecure: false          # 生产环境务必设为 false / Must be false in production
 
-# SOCKS5 proxy (local)
+# SOCKS5 本地代理 / SOCKS5 local proxy
 socks5:
   listen: 127.0.0.1:1080
 
-# HTTP proxy (local)
+# HTTP 本地代理 / HTTP local proxy
 http:
   listen: 127.0.0.1:8080
 
+# 流量伪装 (让流量看起来像正常 HTTPS)
 # Masquerade (makes traffic look like normal HTTPS)
 # masquerade:
 #   type: proxy

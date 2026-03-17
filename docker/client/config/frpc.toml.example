@@ -1,35 +1,41 @@
-# FRP Client Configuration
-# See: https://github.com/fatedier/frp/blob/dev/conf/frpc_full_example.toml
+# FRP 客户端配置 / FRP Client Configuration
+# 完整参考 / Full reference: https://github.com/fatedier/frp/blob/dev/conf/frpc_full_example.toml
 
+# 服务器地址 (填你的美国服务器 IP)
+# Server address (your US server IP)
+# 如果启用了 shadow-TLS，改为 127.0.0.1 / If shadow-TLS enabled, use 127.0.0.1
 serverAddr = "your-server-ip"
 serverPort = 7000
 
+# 认证 (必须和服务端一致) / Authentication (must match server)
 auth.method = "token"
 auth.token = "your-secret-token"
 
-# Transport settings
-transport.protocol = "tcp"
-transport.tcpMux = true
+# 传输设置 / Transport settings
+transport.protocol = "tcp"        # tcp / quic / websocket / wss
+transport.tcpMux = true           # TCP 多路复用 (推荐开启) / TCP multiplexing (recommended)
 transport.tcpMuxKeepaliveInterval = 10
 transport.heartbeatInterval = 10
 transport.heartbeatTimeout = 30
-transport.poolCount = 5
+transport.poolCount = 5           # 预建连接数 / Pre-established connection pool size
 
-# TLS (recommended for cross-border)
+# TLS 加密 (跨境推荐) / TLS encryption (recommended for cross-border)
 # transport.tls.enable = true
 
-# Logging
+# 日志 / Logging
 log.to = "/var/log/frp/frpc.log"
 log.level = "info"
 
-# Admin dashboard (required for monitoring/healthcheck)
+# 管理面板 (watchdog 健康检查需要) / Admin panel (needed for watchdog health check)
 webServer.addr = "127.0.0.1"
 webServer.port = 7400
 
-# Don't exit on login failure (retry forever)
+# 连接失败不退出 (让 watchdog 处理重连)
+# Don't exit on login failure (let watchdog handle reconnection)
 loginFailExit = false
 
-# Proxy definitions
+# --- 代理定义 / Proxy Definitions ---
+# 每个 [[proxies]] 块定义一条隧道 / Each [[proxies]] block defines one tunnel
 [[proxies]]
 name = "web"
 type = "tcp"

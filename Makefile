@@ -149,13 +149,13 @@ clean:
 
 frps-docker:
 	@echo "==> Starting FRP Server (Docker)..."
-	@cd docker && test -f .env || cp .env.example .env
+	@cd docker/server && test -f .env || cp .env.example .env
 	@cd docker/server/config && test -f frps.toml || (cp frps.toml.example frps.toml && echo "==> Created frps.toml from example — edit docker/server/config/frps.toml with your settings")
 	@cd docker/server && docker compose up -d --build
 
 frpc-docker:
 	@echo "==> Starting FRP Client (Docker)..."
-	@cd docker && test -f .env || cp .env.example .env
+	@cd docker/client && test -f .env || cp .env.example .env
 	@cd docker/client/config && test -f frpc.toml || (cp frpc.toml.example frpc.toml && echo "==> Created frpc.toml from example — edit docker/client/config/frpc.toml with your settings")
 	@cd docker/client && docker compose up -d --build
 

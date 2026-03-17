@@ -60,7 +60,7 @@ start_shadow_tls() {
         SHADOW_TLS_PID=$!
         log "shadow-tls client started (PID: $SHADOW_TLS_PID)"
     else
-        SHADOW_TLS_LISTEN="${SHADOW_TLS_LISTEN:-0.0.0.0:443}"
+        SHADOW_TLS_LISTEN="${SHADOW_TLS_LISTEN:-0.0.0.0:8443}"
         SHADOW_TLS_BACKEND="${SHADOW_TLS_BACKEND:-127.0.0.1:7000}"
         SHADOW_TLS_PASSWORD="${SHADOW_TLS_PASSWORD:-}"
         SHADOW_TLS_SNI="${SHADOW_TLS_SNI:-www.microsoft.com}"

@@ -4,6 +4,7 @@ namespace OPNsense\Frp\Api;
 
 use OPNsense\Base\ApiControllerBase;
 use OPNsense\Frp\Client;
+use OPNsense\Frp\Server;
 
 class MonitorController extends ApiControllerBase
 {
@@ -575,5 +576,111 @@ class MonitorController extends ApiControllerBase
             'targets' => array_column($targets, 'target_label'),
             'range' => $range,
         ];
+    }
+
+    /**
+     * Fetch FRP dashboard API directly (bypass SQLite for real-time data)
+     */
+    private function fetchFrpApi($addr, $port, $user, $password, $path)
+    {
+        // 0.0.0.0 is a listen address; connect to localhost instead
+        if ($addr === '0.0.0.0') {
+            $addr = '127.0.0.1';
+        }
+        $url = "http://{$addr}:{$port}{$path}";
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT_MS, 500);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 200);
+        if (!empty($user)) {
+            curl_setopt($ch, CURLOPT_USERPWD, "{$user}:{$password}");
+        }
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($response === false || $httpCode !== 200) {
+            return null;
+        }
+
+        return json_decode($response, true);
+    }
+
+    /**
+     * GET /api/frp/monitor/live
+     * Direct passthrough to FRP dashboard API — no SQLite, minimal latency.
+     * Returns raw traffic counters; browser computes speed client-side.
+     */
+    public function liveAction()
+    {
+        $now = time();
+        $proxies = [];
+
+        // --- Client ---
+        $clientMdl = new Client();
+        if ((string)$clientMdl->webServerEnabled === '1') {
+            $addr = (string)$clientMdl->webServerAddr ?: '127.0.0.1';
+            $port = (int)((string)$clientMdl->webServerPort ?: 7400);
+            $user = (string)$clientMdl->webServerUser;
+            $pass = (string)$clientMdl->webServerPassword;
+
+            $status = $this->fetchFrpApi($addr, $port, $user, $pass, '/api/status');
+            if (is_array($status)) {
+                foreach ($status as $type => $items) {
+                    if (!is_array($items)) {
+                        continue;
+                    }
+                    foreach ($items as $item) {
+                        if (!isset($item['name'])) {
+                            continue;
+                        }
+                        $proxies[] = [
+                            'name' => $item['name'],
+                            'type' => $type,
+                            'traffic_in' => (int)($item['todayTrafficIn'] ?? $item['today_traffic_in'] ?? 0),
+                            'traffic_out' => (int)($item['todayTrafficOut'] ?? $item['today_traffic_out'] ?? 0),
+                            'cur_conns' => (int)($item['curConns'] ?? $item['cur_conns'] ?? 0),
+                        ];
+                    }
+                }
+            }
+        }
+
+        // --- Server ---
+        $serverMdl = new Server();
+        if ((string)$serverMdl->webServerEnabled === '1') {
+            $addr = (string)$serverMdl->webServerAddr ?: '127.0.0.1';
+            $port = (int)((string)$serverMdl->webServerPort ?: 7500);
+            $user = (string)$serverMdl->webServerUser;
+            $pass = (string)$serverMdl->webServerPassword;
+
+            $proxyTypes = ['tcp', 'udp', 'http', 'https', 'stcp', 'sudp', 'xtcp', 'tcpmux'];
+            foreach ($proxyTypes as $pType) {
+                $data = $this->fetchFrpApi($addr, $port, $user, $pass, "/api/proxy/{$pType}");
+                if ($data === null || !isset($data['proxies']) || !is_array($data['proxies'])) {
+                    continue;
+                }
+                foreach ($data['proxies'] as $item) {
+                    if (!isset($item['name'])) {
+                        continue;
+                    }
+                    // Swap direction: FRP server reports from proxy handler perspective (reversed)
+                    $proxies[] = [
+                        'name' => $item['name'],
+                        'type' => $pType,
+                        'traffic_in' => (int)($item['todayTrafficOut'] ?? $item['today_traffic_out'] ?? 0),
+                        'traffic_out' => (int)($item['todayTrafficIn'] ?? $item['today_traffic_in'] ?? 0),
+                        'cur_conns' => (int)($item['curConns'] ?? $item['cur_conns'] ?? 0),
+                    ];
+                }
+            }
+        }
+
+        if (empty($proxies) && (string)$clientMdl->webServerEnabled !== '1' && (string)$serverMdl->webServerEnabled !== '1') {
+            return ['status' => 'error', 'message' => 'webserver_not_enabled', 'proxies' => [], 'timestamp' => $now];
+        }
+
+        return ['status' => 'ok', 'proxies' => $proxies, 'timestamp' => $now];
     }
 }

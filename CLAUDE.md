@@ -45,6 +45,8 @@ POST /api/frp/proxy/searchItem                → ProxyController::searchItemAct
 POST /api/frp/proxy/addItem                   → ProxyController::addItemAction()
 POST /api/frp/service/reconfigure             → ServiceController::reconfigureAction()
 POST /api/frp/service/status                  → ServiceController::statusAction()
+GET  /api/frp/monitor/live                    → MonitorController::liveAction()      (direct FRP API passthrough, no SQLite)
+GET  /api/frp/monitor/proxies                 → MonitorController::proxiesAction()
 GET  /api/frp/monitor/realtime                → MonitorController::realtimeAction()
 GET  /api/frp/monitor/history                 → MonitorController::historyAction()
 GET  /api/frp/monitor/summary                 → MonitorController::summaryAction()

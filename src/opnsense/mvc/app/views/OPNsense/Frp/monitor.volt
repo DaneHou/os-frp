@@ -109,11 +109,14 @@ $(document).ready(function() {
     var selectedProxy = '';
     var historyRange = '24h';
     var paused = false;
-    var realtimeTimer = null;
+    var liveTimer = null;
     var summaryTimer = null;
     var proxyTableTimer = null;
     var healthHistoryChart = null;
     var healthHistoryRange = '24h';
+    // Live passthrough state for client-side speed calculation
+    var prevLiveSample = {};   // keyed by proxy name: {traffic_in, traffic_out}
+    var prevLiveTimestamp = 0;
 
     // --- Utility ---
     function formatBytes(bytes) {
@@ -169,6 +172,130 @@ $(document).ready(function() {
 
             // Update proxy table
             updateProxyTable(resp.proxies);
+        });
+    }
+
+    // --- Live passthrough (direct FRP API, no SQLite) ---
+    function updateLive() {
+        if (paused) return;
+        ajaxGet('/api/frp/monitor/live', {}, function(resp) {
+            if (resp.status !== 'ok') return;
+
+            var now = resp.timestamp;
+            var dt = prevLiveTimestamp > 0 ? (now - prevLiveTimestamp) : 0;
+            var totalSpeedIn = 0, totalSpeedOut = 0, totalConns = 0;
+            var proxyData = [];
+
+            (resp.proxies || []).forEach(function(p) {
+                var speedIn = 0, speedOut = 0;
+                if (dt > 0 && prevLiveSample[p.name]) {
+                    var prev = prevLiveSample[p.name];
+                    var dIn = p.traffic_in - prev.traffic_in;
+                    var dOut = p.traffic_out - prev.traffic_out;
+                    // Clamp negative deltas (counter reset)
+                    if (dIn < 0) dIn = p.traffic_in;
+                    if (dOut < 0) dOut = p.traffic_out;
+                    speedIn = dIn / dt;
+                    speedOut = dOut / dt;
+                }
+                totalSpeedIn += speedIn;
+                totalSpeedOut += speedOut;
+                totalConns += p.cur_conns;
+                proxyData.push({
+                    name: p.name, type: p.type,
+                    speed_in: speedIn, speed_out: speedOut,
+                    cur_conns: p.cur_conns
+                });
+                prevLiveSample[p.name] = {traffic_in: p.traffic_in, traffic_out: p.traffic_out};
+            });
+            prevLiveTimestamp = now;
+
+            // Update speed cards
+            if (dt > 0) {
+                $('#card-speed-in').text(formatSpeed(totalSpeedIn));
+                $('#card-speed-out').text(formatSpeed(totalSpeedOut));
+            }
+            $('#card-conns').text(totalConns);
+
+            // Append to realtime chart
+            if (dt > 0 && realtimeChart) {
+                var byProxy = {};
+                proxyData.forEach(function(p) {
+                    if (selectedProxy && p.name !== selectedProxy) return;
+                    if (!byProxy[p.name]) byProxy[p.name] = [];
+                    byProxy[p.name].push(p);
+                });
+
+                var existingNames = {};
+                realtimeChart.data.datasets.forEach(function(ds) { existingNames[ds.label] = true; });
+
+                var cutoff = (now - 300) * 1000; // 5 min window
+                var idx = 0;
+                Object.keys(byProxy).sort().forEach(function(name) {
+                    var c = getColor(idx);
+                    var p = byProxy[name][0];
+                    var point = {x: now * 1000, y: 0};
+
+                    // Find or create "In" dataset
+                    var inLabel = name + ' In';
+                    var outLabel = name + ' Out';
+                    var inDs = null, outDs = null;
+                    realtimeChart.data.datasets.forEach(function(ds) {
+                        if (ds.label === inLabel) inDs = ds;
+                        if (ds.label === outLabel) outDs = ds;
+                    });
+
+                    if (!inDs) {
+                        inDs = {
+                            label: inLabel,
+                            data: [],
+                            borderColor: c.in, backgroundColor: c.inBg,
+                            borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3
+                        };
+                        realtimeChart.data.datasets.push(inDs);
+                    }
+                    if (!outDs) {
+                        outDs = {
+                            label: outLabel,
+                            data: [],
+                            borderColor: c.out, backgroundColor: c.outBg,
+                            borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3
+                        };
+                        realtimeChart.data.datasets.push(outDs);
+                    }
+
+                    inDs.data.push({x: now * 1000, y: p.speed_in});
+                    outDs.data.push({x: now * 1000, y: p.speed_out});
+
+                    // Trim old data
+                    while (inDs.data.length > 0 && inDs.data[0].x < cutoff) inDs.data.shift();
+                    while (outDs.data.length > 0 && outDs.data[0].x < cutoff) outDs.data.shift();
+
+                    idx++;
+                });
+
+                realtimeChart.update('none');
+            }
+
+            // Update proxy table speeds (merge with existing today/week/month from summary)
+            if (dt > 0) {
+                var existing = {};
+                $('#proxyTableBody tr').each(function() {
+                    var cells = $(this).find('td');
+                    if (cells.length >= 9) {
+                        var name = cells.eq(0).text();
+                        existing[name] = $(this);
+                    }
+                });
+                proxyData.forEach(function(p) {
+                    if (existing[p.name]) {
+                        var cells = existing[p.name].find('td');
+                        cells.eq(2).text(formatSpeed(p.speed_in));
+                        cells.eq(3).text(formatSpeed(p.speed_out));
+                        cells.eq(8).text(p.cur_conns);
+                    }
+                });
+            }
         });
     }
 
@@ -549,18 +676,21 @@ $(document).ready(function() {
     initRealtimeChart();
     initHistoryChart();
     updateSummary();
-    updateRealtimeChart();
+    updateRealtimeChart();  // backfill 5min history from SQLite once
     updateHistoryChart();
     initHealthHistoryChart();
     updateHealthHistoryChart();
 
-    // Timers
-    realtimeTimer = setInterval(function() { updateRealtimeChart(); }, 2000);
-    summaryTimer = setInterval(function() { updateSummary(); }, 2000);
+    // Timers: live passthrough every 2s, summary (totals) every 30s
+    liveTimer = setInterval(function() { updateLive(); }, 2000);
+    summaryTimer = setInterval(function() { updateSummary(); }, 30000);
 
     // --- Event handlers ---
     $('#proxyFilter').on('change', function() {
         selectedProxy = $(this).val();
+        // Reset chart datasets when filter changes, backfill from SQLite
+        realtimeChart.data.datasets = [];
+        realtimeChart.update('none');
         updateRealtimeChart();
     });
 
@@ -596,6 +726,7 @@ $(document).ready(function() {
     $('#refreshBtn').on('click', function() {
         loadProxies();
         updateSummary();
+        updateLive();
         updateRealtimeChart();
         updateHistoryChart();
     });

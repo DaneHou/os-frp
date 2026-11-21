@@ -59,7 +59,7 @@ fi
 
 if [ "$is_running" = "0" ]; then
     log_msg "FRP process not running, restarting..."
-    /usr/local/bin/configctl frp restart
+    /usr/local/sbin/configctl frp restart
     log_msg "Restart command issued"
 fi
 

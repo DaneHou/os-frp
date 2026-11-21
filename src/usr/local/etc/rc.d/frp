@@ -60,7 +60,11 @@ frp_start()
     else
         local logfile="${logdir}/frps.log"
     fi
-    /usr/sbin/daemon -p "$pidfile" -o "$logfile" -f "$binary" -c "$config"
+    # config holds the auth token / dashboard password: root-only
+    chmod 600 "$config"
+    # frp writes and rotates its own log (log.to / log.maxDays in the toml);
+    # daemon(8) only captures stray stdout/stderr such as panics.
+    /usr/sbin/daemon -p "$pidfile" -o "${logfile%.log}.stdout.log" -f "$binary" -c "$config"
 }
 
 frp_stop()

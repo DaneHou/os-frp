@@ -54,11 +54,11 @@ function frp_cron()
     return [
         [
             'description' => 'FRP Traffic Collector',
-            'autocron' => ['/usr/local/bin/configctl frp collect_traffic', '*'],
+            'autocron' => ['/usr/local/sbin/configctl frp collect_traffic', '*'],
         ],
         [
             'description' => 'FRP Watchdog',
-            'autocron' => ['/usr/local/bin/configctl frp watchdog', '*'],
+            'autocron' => ['/usr/local/sbin/configctl frp watchdog', '*'],
         ],
     ];
 }

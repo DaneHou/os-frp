@@ -127,6 +127,11 @@
                 <option30 value="30">30s</option30>
             </OptionValues>
         </monitorInterval>
+        <healthProxy type="TextField">
+            <Required>N</Required>
+            <Mask>/^((socks5h?|socks4a?|https?):\/\/[A-Za-z0-9.\-]+:[0-9]{1,5})?$/</Mask>
+            <ValidationMessage>Use scheme://host:port, e.g. socks5h://192.168.70.1:1080</ValidationMessage>
+        </healthProxy>
         <webServerEnabled type="BooleanField">
             <default>0</default>
         </webServerEnabled>

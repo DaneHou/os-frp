@@ -523,6 +523,11 @@ function collectHealthMetrics($db, $now)
         return;
     }
 
+    $proxy = trim((string)($xml->OPNsense->frp->client->healthProxy ?? ''));
+    if ($proxy !== '' && !preg_match('#^(socks5h?|socks4a?|https?)://[A-Za-z0-9.\-]+:[0-9]{1,5}$#', $proxy)) {
+        $proxy = '';
+    }
+
     $stmt = $db->prepare(
         "INSERT INTO health_samples (timestamp, target_label, target_url, latency_ms, http_code, status, error)
          VALUES (:ts, :label, :url, :latency, :code, :status, :error)"
@@ -547,6 +552,11 @@ function collectHealthMetrics($db, $now)
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_SSL_VERIFYPEER => false,
         ]);
+        if ($proxy !== '') {
+            curl_setopt($ch, CURLOPT_PROXY, $proxy);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+        }
 
         $ok = curl_exec($ch);
 

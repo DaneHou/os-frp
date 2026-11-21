@@ -169,6 +169,13 @@
         <advanced>true</advanced>
     </field>
     <field>
+        <id>client.healthProxy</id>
+        <label>Health Check Proxy</label>
+        <type>text</type>
+        <help>Optional. Send the Monitor health-target probes through this proxy (e.g. socks5h://192.168.70.1:1080 for the remote exit), so they test the tunnel instead of the local WAN. Empty = direct.</help>
+        <advanced>true</advanced>
+    </field>
+    <field>
         <id>client.webServerAddr</id>
         <label>Dashboard Listen Address</label>
         <type>text</type>

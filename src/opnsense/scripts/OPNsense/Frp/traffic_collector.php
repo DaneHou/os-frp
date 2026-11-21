@@ -265,6 +265,10 @@ function collectServerData($db, $config, $now, $collectInterval)
 
     // Collect proxy data from server
     $proxyTypes = ['tcp', 'udp', 'http', 'https', 'stcp', 'sudp', 'xtcp', 'tcpmux'];
+    // Only query proxy types that have proxies (frps logs every API call)
+    if (is_array($serverInfo) && is_array($serverInfo['proxyTypeCount'] ?? null)) {
+        $proxyTypes = array_values(array_intersect($proxyTypes, array_keys(array_filter($serverInfo['proxyTypeCount']))));
+    }
     $proxies = [];
 
     foreach ($proxyTypes as $type) {

@@ -682,8 +682,32 @@ $(document).ready(function() {
     updateHealthHistoryChart();
 
     // Timers: live passthrough every 2s, summary (totals) every 30s
-    liveTimer = setInterval(function() { updateLive(); }, 2000);
-    summaryTimer = setInterval(function() { updateSummary(); }, 30000);
+    function startTimers() {
+        if (liveTimer === null) {
+            liveTimer = setInterval(function() { updateLive(); }, 2000);
+        }
+        if (summaryTimer === null) {
+            summaryTimer = setInterval(function() { updateSummary(); }, 30000);
+        }
+    }
+    function stopTimers() {
+        clearInterval(liveTimer);
+        clearInterval(summaryTimer);
+        liveTimer = summaryTimer = null;
+    }
+    // Don't poll the FRP API from a background tab
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            stopTimers();
+        } else {
+            updateLive();
+            updateSummary();
+            startTimers();
+        }
+    });
+    if (!document.hidden) {
+        startTimers();
+    }
 
     // --- Event handlers ---
     $('#proxyFilter').on('change', function() {
@@ -815,7 +839,7 @@ $(document).ready(function() {
     });
 
     // Refresh health history every 60s
-    setInterval(function() { updateHealthHistoryChart(); }, 60000);
+    setInterval(function() { if (!document.hidden) { updateHealthHistoryChart(); } }, 60000);
 
     // Auto-check on page load
     runHealthCheck();

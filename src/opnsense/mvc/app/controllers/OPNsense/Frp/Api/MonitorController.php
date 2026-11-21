@@ -655,7 +655,12 @@ class MonitorController extends ApiControllerBase
             $user = (string)$serverMdl->webServerUser;
             $pass = (string)$serverMdl->webServerPassword;
 
+            // Only query proxy types that have proxies (frps logs every API call)
             $proxyTypes = ['tcp', 'udp', 'http', 'https', 'stcp', 'sudp', 'xtcp', 'tcpmux'];
+            $info = $this->fetchFrpApi($addr, $port, $user, $pass, '/api/serverinfo');
+            if (is_array($info) && is_array($info['proxyTypeCount'] ?? null)) {
+                $proxyTypes = array_values(array_intersect($proxyTypes, array_keys(array_filter($info['proxyTypeCount']))));
+            }
             foreach ($proxyTypes as $pType) {
                 $data = $this->fetchFrpApi($addr, $port, $user, $pass, "/api/proxy/{$pType}");
                 if ($data === null || !isset($data['proxies']) || !is_array($data['proxies'])) {

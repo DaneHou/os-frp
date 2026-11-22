@@ -54,6 +54,11 @@ GET  /api/frp/monitor/healthcheck             → MonitorController::healthcheck
 GET  /api/frp/monitor/healthHistory           → MonitorController::healthHistoryAction()
 ```
 
+### Health check (os-netbaseline plugin health contract)
+`configctl frp healthcheck` → `scripts/OPNsense/Frp/healthcheck.py` (read-only, parameterless,
+prints `{"checks":[{name, ok, severity, detail}]}`; frpc/frps process + admin API proxy status,
+localhost only; never prints tokens/passwords). Tests: `python3 -m pytest -q tests`.
+
 ### Deployment commands
 
 ```bash

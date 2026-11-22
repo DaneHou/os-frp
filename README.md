@@ -147,6 +147,13 @@ The **Monitor** page shows:
 
 > Requires **Admin Dashboard** enabled in Client or Server advanced settings.
 
+### Health check (`configctl frp healthcheck`)
+
+A read-only summary for the Netbaseline checkup (os-netbaseline "plugin health contract"):
+whether frpc/frps is running when enabled, and, through the same admin API the Monitor page
+uses (only when it listens on localhost), the proxies that are not running (frpc, medium) or
+offline (frps, low: the remote client is gone). Tokens and passwords are never printed.
+
 ## Features
 
 | Feature | OPNsense | Docker |

@@ -1,5 +1,5 @@
 PLUGIN_NAME=	frp
-PLUGIN_VERSION=	1.0.0
+PLUGIN_VERSION=	1.1.0
 PLUGIN_COMMENT=	FRP Tunnel for OPNsense
 
 PLUGIN_PREFIX=	/usr/local
@@ -49,6 +49,8 @@ install-plugin:
 	@cp src/opnsense/scripts/OPNsense/Frp/*.sh $(SCRIPTS_DIR)/
 	@chmod +x $(SCRIPTS_DIR)/*.sh
 	@cp src/opnsense/scripts/OPNsense/Frp/*.php $(SCRIPTS_DIR)/ 2>/dev/null || true
+	@cp src/opnsense/scripts/OPNsense/Frp/*.py $(SCRIPTS_DIR)/
+	@chmod +x $(SCRIPTS_DIR)/*.py
 	@# Templates
 	@mkdir -p $(TEMPLATES_DIR)
 	@cp src/opnsense/service/templates/OPNsense/Frp/* $(TEMPLATES_DIR)/

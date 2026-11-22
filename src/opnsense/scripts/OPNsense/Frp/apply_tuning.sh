@@ -94,7 +94,7 @@ apply_mss() {
             fi
 
             echo "Setting MSS clamp ${mss} on ${real_iface} for FRP client traffic to ${server_addr}:${server_port}..."
-            printf "scrub on %s proto tcp to %s port %s max-mss %s\nscrub on %s proto tcp from %s port %s max-mss %s\n" \
+            printf "match on %s proto tcp to %s port %s scrub (max-mss %s)\nmatch on %s proto tcp from %s port %s scrub (max-mss %s)\n" \
                 "$real_iface" "$server_addr" "$server_port" "$mss" \
                 "$real_iface" "$server_addr" "$server_port" "$mss" \
                 | pfctl -a frp_mss -f - 2>/dev/null || {
@@ -106,7 +106,7 @@ apply_mss() {
             bind_port=${bind_port:-7000}
 
             echo "Setting MSS clamp ${mss} on ${real_iface} for FRP server port ${bind_port}..."
-            printf "scrub on %s proto tcp to port %s max-mss %s\nscrub on %s proto tcp from port %s max-mss %s\n" \
+            printf "match on %s proto tcp to port %s scrub (max-mss %s)\nmatch on %s proto tcp from port %s scrub (max-mss %s)\n" \
                 "$real_iface" "$bind_port" "$mss" \
                 "$real_iface" "$bind_port" "$mss" \
                 | pfctl -a frp_mss -f - 2>/dev/null || {
@@ -128,15 +128,14 @@ apply_tfo() {
 
     if [ "$enabled" = "1" ]; then
         echo "Enabling TCP Fast Open..."
-        sysctl net.inet.tcp.fastopen.enabled=1 > /dev/null 2>&1
         sysctl net.inet.tcp.fastopen.server_enable=1 > /dev/null 2>&1
         sysctl net.inet.tcp.fastopen.client_enable=1 > /dev/null 2>&1
-        echo "TFO enabled: $(sysctl -n net.inet.tcp.fastopen.enabled)"
+        echo "TFO enabled: server=$(sysctl -n net.inet.tcp.fastopen.server_enable) client=$(sysctl -n net.inet.tcp.fastopen.client_enable)"
     else
-        current=$(sysctl -n net.inet.tcp.fastopen.enabled 2>/dev/null)
+        current=$(sysctl -n net.inet.tcp.fastopen.server_enable 2>/dev/null)
         if [ "$current" = "1" ]; then
             echo "Disabling TCP Fast Open..."
-            sysctl net.inet.tcp.fastopen.enabled=0 > /dev/null 2>&1
+            sysctl net.inet.tcp.fastopen.server_enable=0 net.inet.tcp.fastopen.client_enable=0 > /dev/null 2>&1
         fi
     fi
 }
@@ -151,17 +150,16 @@ apply_tcp_tuning() {
 
     if [ "$enabled" = "1" ]; then
         echo "Applying TCP buffer tuning..."
-        sysctl net.inet.tcp.recvbuf_max=4194304 > /dev/null 2>&1
-        sysctl net.inet.tcp.sendbuf_max=4194304 > /dev/null 2>&1
+        # raise only: never lower a larger system default
+        for oid in net.inet.tcp.recvbuf_max net.inet.tcp.sendbuf_max; do
+            [ "$(sysctl -n $oid 2>/dev/null || echo 0)" -lt 4194304 ] && sysctl $oid=4194304 > /dev/null 2>&1
+        done
         sysctl net.inet.tcp.rfc1323=1 > /dev/null 2>&1
         sysctl net.inet.tcp.sack.enable=1 > /dev/null 2>&1
         sysctl net.inet.tcp.nolocaltimewait=1 > /dev/null 2>&1
-        echo "TCP tuning applied (4MB buffers, SACK, RFC 1323)"
-    else
-        echo "Restoring default TCP buffer settings..."
-        sysctl net.inet.tcp.recvbuf_max=2097152 > /dev/null 2>&1
-        sysctl net.inet.tcp.sendbuf_max=2097152 > /dev/null 2>&1
+        echo "TCP tuning applied (buffers >= 4MB, SACK, RFC 1323)"
     fi
+    # off: leave the system's buffer limits alone (they may be larger than any FRP default)
 }
 
 mode=$(get_active_mode)

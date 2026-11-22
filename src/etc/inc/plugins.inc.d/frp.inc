@@ -49,6 +49,16 @@ function frp_services()
     return $services;
 }
 
+/**
+ * MSS clamping (apply_tuning.sh) loads "match ... scrub (max-mss N)" rules into
+ * the anchor frp_mss; the anchor must be referenced from the ruleset head to be
+ * evaluated. Empty when MSS clamping is off.
+ */
+function frp_firewall(\OPNsense\Firewall\Plugin $fw)
+{
+    $fw->registerAnchor('frp_mss', 'fw', 0, 'head');
+}
+
 function frp_cron()
 {
     return [

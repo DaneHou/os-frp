@@ -36,6 +36,10 @@ frp_start()
     # Generate configs via template engine
     /usr/local/bin/pluginctl -c frp
 
+    # Network tuning (BBR, MSS clamp, TFO, buffers) before the listener exists: accepted
+    # sockets inherit the TCP stack of the listening socket. Also covers boot.
+    /usr/local/opnsense/scripts/OPNsense/Frp/apply_tuning.sh >/dev/null 2>&1 || true
+
     if [ "$frp_mode" = "client" ]; then
         binary="/usr/local/bin/frpc"
         config="${confdir}/frpc.toml"

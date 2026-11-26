@@ -1,5 +1,5 @@
 PLUGIN_NAME=	frp
-PLUGIN_VERSION=	1.2.0
+PLUGIN_VERSION=	1.2.1
 PLUGIN_COMMENT=	FRP Tunnel for OPNsense
 
 PLUGIN_PREFIX=	/usr/local
@@ -19,6 +19,11 @@ RCD_DIR=		$(PLUGIN_PREFIX)/etc/rc.d
 FRP_VERSION=		0.67.0
 FRP_ARCH=		freebsd_amd64
 FRP_URL=		https://github.com/fatedier/frp/releases/download/v$(FRP_VERSION)/frp_$(FRP_VERSION)_$(FRP_ARCH).tar.gz
+# SHA256 of the release tarball (from the release's frp_sha256_checksums.txt).
+# frps/frpc run as root on the firewall: refuse to install anything else.
+# When bumping FRP_VERSION, update this from the new release's checksum file.
+FRP_SHA256_freebsd_amd64=	40207a7c469e848357d9da0858a34c92a8b088f900e02f44e0fafe66814b7d7f
+FRP_SHA256?=	$(FRP_SHA256_$(FRP_ARCH))
 
 .PHONY: install install-plugin install-frp activate uninstall reinstall clean \
 	frps-docker frpc-docker frps-docker-stop frpc-docker-stop frps-docker-logs frpc-docker-logs
@@ -79,6 +84,14 @@ install-frp:
 	@echo "==> Downloading FRP v$(FRP_VERSION)..."
 	@mkdir -p /tmp/frp-install
 	@fetch -o /tmp/frp-install/frp.tar.gz $(FRP_URL)
+	@if [ -z "$(FRP_SHA256)" ]; then \
+		echo "ERROR: no FRP_SHA256 known for $(FRP_ARCH); set it explicitly"; exit 1; \
+	fi; \
+	ACTUAL=$$(sha256 -q /tmp/frp-install/frp.tar.gz); \
+	if [ "$$ACTUAL" != "$(FRP_SHA256)" ]; then \
+		echo "ERROR: frp download checksum mismatch (got $$ACTUAL), not installing"; \
+		rm -f /tmp/frp-install/frp.tar.gz; exit 1; \
+	fi
 	@tar -xzf /tmp/frp-install/frp.tar.gz -C /tmp/frp-install
 	@install -m 755 /tmp/frp-install/frp_$(FRP_VERSION)_$(FRP_ARCH)/frpc $(PLUGIN_PREFIX)/bin/frpc
 	@install -m 755 /tmp/frp-install/frp_$(FRP_VERSION)_$(FRP_ARCH)/frps $(PLUGIN_PREFIX)/bin/frps

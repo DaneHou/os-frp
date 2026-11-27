@@ -23,12 +23,12 @@ function frp_services()
         $services[] = [
             'description' => gettext('FRP Client'),
             'configd' => [
-                'restart' => ['frp restart'],
-                'start' => ['frp start'],
-                'stop' => ['frp stop'],
+                'restart' => ['frp restart client'],
+                'start' => ['frp start client'],
+                'stop' => ['frp stop client'],
             ],
             'name' => 'frpc',
-            'pidfile' => '/var/run/frp.pid',
+            'pidfile' => '/var/run/frpc.pid',
         ];
     }
 
@@ -37,12 +37,12 @@ function frp_services()
         $services[] = [
             'description' => gettext('FRP Server'),
             'configd' => [
-                'restart' => ['frp restart'],
-                'start' => ['frp start'],
-                'stop' => ['frp stop'],
+                'restart' => ['frp restart server'],
+                'start' => ['frp start server'],
+                'stop' => ['frp stop server'],
             ],
             'name' => 'frps',
-            'pidfile' => '/var/run/frp.pid',
+            'pidfile' => '/var/run/frps.pid',
         ];
     }
 
@@ -61,6 +61,11 @@ function frp_firewall(\OPNsense\Firewall\Plugin $fw)
 
 function frp_cron()
 {
+    // nothing to collect or watch while neither role is enabled; the GUI Apply
+    // regenerates cron (Api/ServiceController) so enabling adds the jobs again
+    if (!frp_enabled()) {
+        return [];
+    }
     return [
         [
             'description' => 'FRP Traffic Collector',

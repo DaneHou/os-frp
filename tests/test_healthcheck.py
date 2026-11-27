@@ -25,6 +25,7 @@ CONFIG = """<opnsense><OPNsense><frp>
     </proxies>
   </client>
   <server><enabled>{server}</enabled><authToken>{token}</authToken>
+    <transportTcpMux>{mux}</transportTcpMux><transportHeartbeatTimeout>{hb}</transportHeartbeatTimeout>
     <webServerEnabled>1</webServerEnabled><webServerAddr>127.0.0.1</webServerAddr><webServerPort>7500</webServerPort>
     <webServerUser>admin</webServerUser><webServerPassword>{password}</webServerPassword>
   </server>
@@ -50,21 +51,30 @@ class Api:
         return self.routes[path]
 
 
-def setup(tmp_path, client='1', server='0', cweb='1', caddr='127.0.0.1', proc='frpc'):
+def setup(tmp_path, client='1', server='0', cweb='1', caddr='127.0.0.1', proc='frpc', mux='1', hb='-1',
+          procs=None):
+    """procs: {'client': name, 'server': name} for the process behind each role pidfile."""
     cfg = tmp_path / 'config.xml'
-    cfg.write_text(CONFIG.format(client=client, server=server, cweb=cweb, caddr=caddr, token=TOKEN, password=PASSWORD))
-    pid = tmp_path / 'frp.pid'
-    pid.write_text(str(os.getpid()))
+    cfg.write_text(CONFIG.format(client=client, server=server, cweb=cweb, caddr=caddr, token=TOKEN,
+                                 password=PASSWORD, mux=mux, hb=hb))
+    procs = procs or {'client': proc, 'server': proc}
+    by_pid = {}
+    pidfiles = {}
+    for side, pid in (('client', os.getpid()), ('server', os.getppid())):
+        f = tmp_path / ('%s.pid' % side)
+        f.write_text(str(pid))
+        pidfiles[side] = str(f)
+        by_pid[str(pid)] = procs[side]
 
     def runner(argv, **kw):
         assert argv[:2] == [healthcheck.PS, '-p']
-        return types.SimpleNamespace(returncode=0, stdout=proc + '\n')
-    return str(cfg), str(pid), runner
+        return types.SimpleNamespace(returncode=0, stdout=by_pid[argv[2]] + '\n')
+    return str(cfg), pidfiles, runner
 
 
 def run(tmp_path, api, **kw):
-    cfg, pid, runner = setup(tmp_path, **kw)
-    out = healthcheck.build(cfg, pid, runner, api)
+    cfg, pidfiles, runner = setup(tmp_path, **kw)
+    out = healthcheck.build(cfg, pidfiles, runner, api, legacy_pidfile=None)
     text = json.dumps(out)
     assert TOKEN not in text and PASSWORD not in text and '203.0.113.5' not in text
     for c in out['checks']:
@@ -119,13 +129,22 @@ def test_api_unreachable_is_low(tmp_path):
 
 
 def test_process_not_running(tmp_path):
-    cfg, pid, runner = setup(tmp_path)
-    os.remove(pid)
-    out = healthcheck.build(cfg, pid, runner, Api({}))
+    cfg, pidfiles, runner = setup(tmp_path)
+    os.remove(pidfiles['client'])
+    out = healthcheck.build(cfg, pidfiles, runner, Api({}), legacy_pidfile=None)
     assert out['checks'] == [{'name': 'frpc running', 'ok': False, 'severity': 'medium', 'detail': 'not running'}]
     (tmp_path / 'b').mkdir()
     c, _ = run(tmp_path / 'b', Api({}), proc='sshd')
     assert c['frpc running']['ok'] is False and 'sshd' in c['frpc running']['detail']
+
+
+def test_legacy_shared_pidfile_still_counts(tmp_path):
+    # frps started by 1.2 (pid only in /var/run/frp.pid) must not show as down after a file update
+    cfg, pidfiles, runner = setup(tmp_path, client='0', server='1', procs={'client': 'x', 'server': 'frps'})
+    legacy = pidfiles['server']
+    pidfiles = {'client': str(tmp_path / 'none.pid'), 'server': str(tmp_path / 'none2.pid')}
+    out = healthcheck.build(cfg, pidfiles, runner, Api(SERVER), legacy_pidfile=legacy)
+    assert {c['name']: c['ok'] for c in out['checks']}['frps running'] is True
 
 
 def test_server_offline_proxies_are_low_and_only_used_types_queried(tmp_path):
@@ -142,9 +161,31 @@ def test_server_offline_proxies_are_low_and_only_used_types_queried(tmp_path):
 def test_disabled_and_both_enabled(tmp_path):
     c, out = run(tmp_path, Api({}), client='0', server='0')
     assert out == {'checks': []}
+    # 1.3+: client and server run side by side, each checked against its own pidfile
     (tmp_path / 'b').mkdir()
-    c, _ = run(tmp_path / 'b', Api({'/api/status': CLIENT_STATUS}), client='1', server='1')
-    assert c['frps running']['ok'] is None
+    routes = dict(SERVER, **{'/api/status': CLIENT_STATUS})
+
+    class Both(Api):
+        def __call__(self, port, path, user, password):
+            return routes[path]
+    c, _ = run(tmp_path / 'b', Both({}), client='1', server='1', procs={'client': 'frpc', 'server': 'frps'})
+    assert c['frpc running']['ok'] is True and c['frps running']['ok'] is True
+    (tmp_path / 'c').mkdir()
+    c, _ = run(tmp_path / 'c', Both({}), client='1', server='1', procs={'client': 'frpc', 'server': 'frpc'})
+    assert c['frps running']['ok'] is False and c['frpc running']['ok'] is True
+
+
+@pytest.mark.parametrize('mux,hb,ok', [('1', '-1', True), ('1', '', True), ('1', '30', False),
+                                       ('1', '90', False), ('0', '30', None)])
+def test_server_heartbeat_timeout_with_tcpmux(tmp_path, mux, hb, ok):
+    c, _ = run(tmp_path, Api(SERVER), client='0', server='1', proc='frps', mux=mux, hb=hb)
+    if ok is None:
+        assert 'frps heartbeat timeout' not in c
+        return
+    check = c['frps heartbeat timeout']
+    assert check['ok'] is ok
+    if not ok:
+        assert check['severity'] == 'medium' and 'Set it to -1' in check['detail'] and hb in check['detail']
 
 
 def test_http_get_only_talks_to_localhost(monkeypatch):
@@ -174,5 +215,5 @@ def test_http_get_only_talks_to_localhost(monkeypatch):
 def test_unreadable_config(tmp_path, bad):
     p = tmp_path / 'c.xml'
     p.write_text(bad)
-    out = healthcheck.build(str(p), str(tmp_path / 'pid'), None, Api({}))
+    out = healthcheck.build(str(p), {'client': str(tmp_path / 'pid')}, None, Api({}))
     assert out['checks'][0]['ok'] is None

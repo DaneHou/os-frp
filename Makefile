@@ -1,5 +1,5 @@
 PLUGIN_NAME=	frp
-PLUGIN_VERSION=	1.2.1
+PLUGIN_VERSION=	1.3.0
 PLUGIN_COMMENT=	FRP Tunnel for OPNsense
 
 PLUGIN_PREFIX=	/usr/local
@@ -72,8 +72,8 @@ install-plugin:
 	@# Static web assets (Chart.js)
 	@mkdir -p $(WWW_JS_DIR)
 	@cp src/opnsense/www/js/frp/*.js $(WWW_JS_DIR)/
-	@# Cron job for traffic collector (every minute)
-	@(crontab -l 2>/dev/null | grep -v 'frp collect_traffic' ; echo '* * * * * /usr/local/bin/flock -n -E 0 -o /tmp/frp_collector.lock /usr/local/sbin/configctl frp collect_traffic > /dev/null 2>&1') | crontab -
+	@# Cron jobs come from frp_cron() (traffic collector + watchdog while a role is enabled);
+	@# OPNsense writes them into root's crontab when cron is regenerated (activate below).
 	@# Config and log directories
 	@mkdir -p /usr/local/etc/frp
 	@mkdir -p /var/log/frp
@@ -112,12 +112,14 @@ activate:
 	@configctl webgui restart 2>/dev/null || service php_fpm restart 2>/dev/null || true
 	@# Generate templates
 	@pluginctl -c 2>/dev/null || true
+	@# Register frp_cron() jobs in root's crontab
+	@configctl cron restart 2>/dev/null || true
 	@echo "==> Plugin activated. Hard-refresh your browser (Ctrl+Shift+R)."
 
 uninstall:
 	@echo "==> Uninstalling os-frp plugin..."
 	@# Stop services
-	@service frp stop 2>/dev/null || true
+	@service frp onestop 2>/dev/null || true
 	@# Remove plugin files
 	@rm -rf $(CONTROLLERS_DIR)
 	@rm -rf $(MODELS_DIR)
@@ -130,13 +132,11 @@ uninstall:
 	@rm -f $(RCD_DIR)/frp
 	@rm -f $(RCD_DIR)/frp_ssserver
 	@rm -rf $(WWW_JS_DIR)
-	@# Remove cron job
-	@(crontab -l 2>/dev/null | grep -v 'frp collect_traffic') | crontab -
 	@# Remove config and runtime files
 	@rm -rf /usr/local/etc/frp
 	@rm -f /etc/rc.conf.d/frp
 	@rm -f /etc/rc.conf.d/frp_ssserver
-	@rm -f /var/run/frp.pid
+	@rm -f /var/run/frp.pid /var/run/frpc.pid /var/run/frps.pid
 	@rm -f /var/run/frp_ssserver.pid
 	@rm -rf /var/log/frp
 	@# Clear caches
@@ -145,6 +145,8 @@ uninstall:
 	@rm -f /var/lib/php/tmp/opnsense_menu_cache.xml 2>/dev/null || true
 	@service configd restart 2>/dev/null || true
 	@configctl webgui restart 2>/dev/null || service php_fpm restart 2>/dev/null || true
+	@# hook file is gone: regenerate root's crontab without the frp jobs
+	@configctl cron restart 2>/dev/null || true
 	@echo "==> Uninstall complete"
 
 reinstall: uninstall install

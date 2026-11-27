@@ -38,7 +38,7 @@
         <id>server.transportTcpMux</id>
         <label>TCP Multiplexing</label>
         <type>checkbox</type>
-        <help>Enable TCP multiplexing.</help>
+        <help>Enable TCP multiplexing. With it on, keep Heartbeat Timeout at -1.</help>
         <advanced>true</advanced>
     </field>
     <field>
@@ -66,7 +66,7 @@
         <id>server.transportHeartbeatTimeout</id>
         <label>Heartbeat Timeout</label>
         <type>text</type>
-        <help>Heartbeat timeout in seconds. -1 = disabled (default, recommended when TCP Mux is on). Set 90 only if TCP Mux is off.</help>
+        <help>Heartbeat timeout in seconds. -1 = disabled (default). Keep -1 while TCP Mux is on: an frpc with TCP Mux sends no heartbeats, so any other value makes this server drop every client's control connection (and all its streams) each time the timeout passes. The FRP health check warns about it. Set 90 only if TCP Mux is off on both ends.</help>
         <advanced>true</advanced>
     </field>
     <field>
@@ -189,9 +189,9 @@
     </field>
     <field>
         <id>server.bbrEnabled</id>
-        <label>Enable BBR</label>
+        <label>Enable BBR (whole router)</label>
         <type>checkbox</type>
-        <help>Enables BBR congestion control. WARNING: This is a system-wide kernel setting that affects ALL TCP connections, not just FRP.</help>
+        <help>Makes BBR the default TCP congestion control. Whole router: this changes the TCP stack for every TCP connection on this firewall (DNS, web GUI, reverse proxy and all other services), not only FRP. It stays in effect while either FRP role has it checked.</help>
         <advanced>true</advanced>
     </field>
     <field>
@@ -210,16 +210,16 @@
     </field>
     <field>
         <id>server.tfoEnabled</id>
-        <label>Enable TCP Fast Open</label>
+        <label>Enable TCP Fast Open (whole router)</label>
         <type>checkbox</type>
-        <help>Enables TCP Fast Open (TFO) for faster connection establishment. WARNING: System-wide kernel setting affecting ALL TCP connections.</help>
+        <help>Enables TCP Fast Open (TFO) for faster connection establishment. Whole router: this changes the TCP stack for every TCP connection on this firewall (DNS, web GUI, reverse proxy and all other services), not only FRP. It stays in effect while either FRP role has it checked.</help>
         <advanced>true</advanced>
     </field>
     <field>
         <id>server.tcpTuningEnabled</id>
-        <label>Enable TCP Buffer Tuning</label>
+        <label>Enable TCP Buffer Tuning (whole router)</label>
         <type>checkbox</type>
-        <help>Optimizes TCP buffer sizes and enables window scaling for high-latency cross-border links (4MB buffers, SACK, RFC 1323). WARNING: System-wide kernel settings.</help>
+        <help>Raises TCP buffer sizes and enables window scaling for high-latency cross-border links (4MB buffers, SACK, RFC 1323). Whole router: this changes the TCP stack for every TCP connection on this firewall (DNS, web GUI, reverse proxy and all other services), not only FRP. It stays in effect while either FRP role has it checked.</help>
         <advanced>true</advanced>
     </field>
     <field>

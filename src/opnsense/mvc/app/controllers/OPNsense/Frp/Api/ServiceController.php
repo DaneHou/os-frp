@@ -21,6 +21,8 @@ class ServiceController extends ApiMutableServiceControllerBase
             $backend = new \OPNsense\Core\Backend();
             $backend->configdRun('template reload OPNsense/Frp');
             $backend->configdRun('frp reconfigure');
+            // frp_cron() only registers its jobs while a role is enabled
+            $backend->configdRun('cron restart');
             return ['status' => 'ok'];
         }
         return ['status' => 'failed'];

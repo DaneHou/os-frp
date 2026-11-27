@@ -1,10 +1,5 @@
-{% if helpers.exists('OPNsense.frp.client.enabled') and OPNsense.frp.client.enabled == '1' %}
-frp_enable="YES"
-frp_mode="client"
-{% elif helpers.exists('OPNsense.frp.server.enabled') and OPNsense.frp.server.enabled == '1' %}
-frp_enable="YES"
-frp_mode="server"
-{% else %}
-frp_enable="NO"
-frp_mode=""
-{% endif %}
+{% set client_on = helpers.exists('OPNsense.frp.client.enabled') and OPNsense.frp.client.enabled == '1' %}
+{% set server_on = helpers.exists('OPNsense.frp.server.enabled') and OPNsense.frp.server.enabled == '1' %}
+frp_enable="{{ 'YES' if client_on or server_on else 'NO' }}"
+frp_client_enable="{{ 'YES' if client_on else 'NO' }}"
+frp_server_enable="{{ 'YES' if server_on else 'NO' }}"

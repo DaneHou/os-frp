@@ -54,6 +54,13 @@ GET  /api/frp/monitor/healthcheck             → MonitorController::healthcheck
 GET  /api/frp/monitor/healthHistory           → MonitorController::healthHistoryAction()
 ```
 
+### Service roles (1.3+)
+frpc (client) and frps (server) are separate rc.d roles: `configctl frp start|stop|restart [client|server]`
+(no role = every enabled role), pidfiles `/var/run/frpc.pid` / `/var/run/frps.pid`. A process started
+by 1.2 (only `/var/run/frp.pid`) is adopted, never orphaned. Stop signals only pidfile processes or
+ones running our own `-c /usr/local/etc/frp/<bin>.toml`. Cron jobs come only from `frp_cron()`, and only
+while a role is enabled; Apply runs `configctl cron restart`.
+
 ### Health check (os-netbaseline plugin health contract)
 `configctl frp healthcheck` → `scripts/OPNsense/Frp/healthcheck.py` (read-only, parameterless,
 prints `{"checks":[{name, ok, severity, detail}]}`; frpc/frps process + admin API proxy status,

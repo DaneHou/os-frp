@@ -1,12 +1,12 @@
 #!/bin/sh
 
-# FRP Watchdog — checks frpc/frps process and restarts if needed
-# Runs via cron every minute
+# FRP Watchdog — checks that each enabled role (frpc client, frps server) runs
+# and starts only the one that is down. Runs via cron every minute.
 
 CONFIG_XML="/conf/config.xml"
 LOG_DIR="/var/log/frp"
 LOG_FILE="${LOG_DIR}/watchdog.log"
-PID_FILE="/var/run/frp.pid"
+RC="/usr/local/etc/rc.d/frp"
 
 # Ensure log dir exists
 mkdir -p "${LOG_DIR}"
@@ -15,53 +15,31 @@ log_msg() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') [watchdog] $1" >> "${LOG_FILE}"
 }
 
-# Helper to read config values
-get_config() {
-    local path="$1"
+# client and server enabled flags in one PHP run: "<client> <server>"
+read_enabled() {
     /usr/local/bin/php -r "
-        \$xml = simplexml_load_file('${CONFIG_XML}');
-        \$node = \$xml->xpath('${path}');
-        echo count(\$node) > 0 ? (string)\$node[0] : '';
+        \$xml = @simplexml_load_file('${CONFIG_XML}');
+        if (\$xml === false) { exit(1); }
+        \$c = \$xml->xpath('//OPNsense/frp/client/enabled');
+        \$s = \$xml->xpath('//OPNsense/frp/server/enabled');
+        echo (count(\$c) ? (string)\$c[0] : '0') . ' ' . (count(\$s) ? (string)\$s[0] : '0');
     " 2>/dev/null
 }
 
-# Determine what should be running
-client_enabled=$(get_config "//OPNsense/frp/client/enabled")
-server_enabled=$(get_config "//OPNsense/frp/server/enabled")
+enabled=$(read_enabled) || exit 0
+client_enabled=${enabled% *}
+server_enabled=${enabled#* }
 
-if [ "$client_enabled" != "1" ] && [ "$server_enabled" != "1" ]; then
-    # Nothing should be running
-    exit 0
-fi
-
-# Check if process is alive
-is_running=0
-if [ -f "${PID_FILE}" ]; then
-    pid=$(cat "${PID_FILE}" 2>/dev/null)
-    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-        is_running=1
+for role in client server; do
+    if [ "$role" = "client" ]; then on="$client_enabled"; else on="$server_enabled"; fi
+    [ "$on" = "1" ] || continue
+    # rc.d status checks the role's own pidfile (and adopts a pre-1.3 one)
+    if ! "$RC" onestatus "$role" >/dev/null 2>&1; then
+        log_msg "FRP ${role} not running, starting it..."
+        /usr/local/sbin/configctl frp start "$role" >/dev/null 2>&1
+        log_msg "Start command issued for ${role}"
     fi
-fi
-
-# Also check by process name
-if [ "$is_running" = "0" ]; then
-    if [ "$client_enabled" = "1" ]; then
-        if pgrep -x frpc >/dev/null 2>&1; then
-            is_running=1
-        fi
-    fi
-    if [ "$server_enabled" = "1" ]; then
-        if pgrep -x frps >/dev/null 2>&1; then
-            is_running=1
-        fi
-    fi
-fi
-
-if [ "$is_running" = "0" ]; then
-    log_msg "FRP process not running, restarting..."
-    /usr/local/sbin/configctl frp restart
-    log_msg "Restart command issued"
-fi
+done
 
 # Trim log file if too large (>1MB)
 if [ -f "${LOG_FILE}" ]; then

@@ -31,4 +31,4 @@ def test_buffers_are_never_lowered():
 def test_tuning_runs_before_every_start():
     rc = read('usr', 'local', 'etc', 'rc.d', 'frp')
     start = rc[rc.index('frp_start()'):]
-    assert start.index('apply_tuning.sh') < start.index('binary=')
+    assert start.index('apply_tuning.sh') < start.index('start_role "$r"')

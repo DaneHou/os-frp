@@ -3,6 +3,12 @@
 # PROVIDE: frp
 # REQUIRE: LOGIN
 # KEYWORD: shutdown
+#
+# frpc (client) and frps (server) are separate roles with separate pidfiles:
+#   service frp start|stop|restart|status [client|server]
+# Without a role the command applies to every enabled role (stop: every running one).
+# Only processes this script started (pidfile) or that run our own config file are
+# ever signalled; an unrelated frpc/frps on the box is left alone.
 
 . /etc/rc.subr
 
@@ -12,26 +18,153 @@ rcvar="frp_enable"
 load_rc_config $name
 
 : ${frp_enable:="NO"}
-: ${frp_mode:="client"}
+: ${frp_client_enable:=""}
+: ${frp_server_enable:=""}
+: ${frp_mode:=""}
 
-pidfile="/var/run/frp.pid"
+# rc.conf.d written by an older template only has frp_mode
+if [ -z "$frp_client_enable" ] && [ -z "$frp_server_enable" ]; then
+    case "$frp_mode" in
+        client) frp_client_enable="YES"; frp_server_enable="NO" ;;
+        server) frp_client_enable="NO"; frp_server_enable="YES" ;;
+        *) frp_client_enable="NO"; frp_server_enable="NO" ;;
+    esac
+fi
+
+# pidfile used by versions up to 1.2 for whichever role was running
+legacy_pidfile="/var/run/frp.pid"
 logdir="/var/log/frp"
 confdir="/usr/local/etc/frp"
 
+frp_role="$2"
+case "$frp_role" in
+    ""|all) frp_role="" ;;
+    client|server) ;;
+    *) echo "unknown FRP role: $frp_role (client or server)"; exit 1 ;;
+esac
+
+# command is "start" etc. for rc.subr; with frp_enable=NO an explicit start
+# would be refused, but the role flags below decide what actually runs.
 start_cmd="${name}_start"
 stop_cmd="${name}_stop"
 status_cmd="${name}_status"
 restart_cmd="${name}_restart"
 
-frp_start()
+role_bin()     { [ "$1" = "client" ] && echo frpc || echo frps; }
+role_pidfile() { echo "/var/run/$(role_bin "$1").pid"; }
+role_config()  { echo "${confdir}/$(role_bin "$1").toml"; }
+
+role_enabled()
 {
-    if [ ! -d "$logdir" ]; then
-        mkdir -p "$logdir"
+    if [ "$1" = "client" ]; then
+        checkyesno frp_client_enable
+    else
+        checkyesno frp_server_enable
+    fi
+}
+
+# roles a command acts on: the one asked for, else the enabled ones
+roles_for()
+{
+    if [ -n "$frp_role" ]; then
+        echo "$frp_role"
+        return
+    fi
+    for r in client server; do
+        if [ "$1" = "all" ] || role_enabled "$r"; then
+            echo "$r"
+        fi
+    done
+}
+
+# pid from a pidfile when that process is alive and is the expected binary
+pid_of()
+{
+    local file="$1" bin="$2" pid comm
+    [ -f "$file" ] || return 1
+    pid=$(cat "$file" 2>/dev/null)
+    case "$pid" in ''|*[!0-9]*) return 1 ;; esac
+    kill -0 "$pid" 2>/dev/null || return 1
+    comm=$(ps -p "$pid" -o comm= 2>/dev/null)
+    [ "$comm" = "$bin" ] || return 1
+    echo "$pid"
+}
+
+# pids of a role: its pidfile, the legacy pidfile, and processes running our config
+role_pids()
+{
+    local role="$1" bin config pids p
+    bin=$(role_bin "$role")
+    config=$(role_config "$role")
+    pids="$(pid_of "$(role_pidfile "$role")" "$bin") $(pid_of "$legacy_pidfile" "$bin")"
+    pids="$pids $(pgrep -f "^/usr/local/bin/${bin} -c ${config}\$" 2>/dev/null)"
+    for p in $pids; do echo "$p"; done | sort -u
+}
+
+stop_role()
+{
+    local role="$1" bin pids count p
+    bin=$(role_bin "$role")
+    pids=$(role_pids "$role")
+    if [ -n "$pids" ]; then
+        echo "Stopping ${bin} (PID: $(echo $pids))..."
+        kill $pids 2>/dev/null
+        count=0
+        while [ $count -lt 10 ]; do
+            alive=""
+            for p in $pids; do kill -0 "$p" 2>/dev/null && alive="$alive $p"; done
+            [ -z "$alive" ] && break
+            sleep 0.5
+            count=$((count + 1))
+        done
+        for p in $alive; do kill -9 "$p" 2>/dev/null; done
+    fi
+    rm -f "$(role_pidfile "$role")"
+    # the legacy pidfile goes once it no longer names a live frpc/frps
+    if [ -f "$legacy_pidfile" ] && [ -z "$(pid_of "$legacy_pidfile" frpc)$(pid_of "$legacy_pidfile" frps)" ]; then
+        rm -f "$legacy_pidfile"
+    fi
+}
+
+start_role()
+{
+    local role="$1" bin binary config logfile
+    bin=$(role_bin "$role")
+    binary="/usr/local/bin/${bin}"
+    config=$(role_config "$role")
+
+    if [ -n "$(role_pids "$role")" ]; then
+        echo "${bin} is already running"
+        return 0
+    fi
+    if [ ! -x "$binary" ]; then
+        echo "FRP binary not found: $binary"
+        return 1
+    fi
+    if [ ! -f "$config" ]; then
+        echo "FRP config not found: $config"
+        return 1
     fi
 
-    if [ ! -d "$confdir" ]; then
-        mkdir -p "$confdir"
+    echo "Starting FRP (${role})..."
+    logfile="${logdir}/${bin}.log"
+    # config holds the auth token / dashboard password: root-only
+    chmod 600 "$config"
+    # frp writes and rotates its own log (log.to / log.maxDays in the toml);
+    # daemon(8) only captures stray stdout/stderr such as panics.
+    /usr/sbin/daemon -p "$(role_pidfile "$role")" -o "${logfile%.log}.stdout.log" -f "$binary" -c "$config"
+}
+
+frp_start()
+{
+    local roles r rc=0
+    roles=$(roles_for enabled)
+    if [ -z "$roles" ]; then
+        echo "FRP is not enabled"
+        return 0
     fi
+
+    mkdir -p "$logdir" "$confdir"
 
     # Generate configs via template engine
     /usr/local/bin/pluginctl -c frp
@@ -40,85 +173,51 @@ frp_start()
     # sockets inherit the TCP stack of the listening socket. Also covers boot.
     /usr/local/opnsense/scripts/OPNsense/Frp/apply_tuning.sh >/dev/null 2>&1 || true
 
-    if [ "$frp_mode" = "client" ]; then
-        binary="/usr/local/bin/frpc"
-        config="${confdir}/frpc.toml"
-    else
-        binary="/usr/local/bin/frps"
-        config="${confdir}/frps.toml"
-    fi
-
-    if [ ! -x "$binary" ]; then
-        echo "FRP binary not found: $binary"
-        return 1
-    fi
-
-    if [ ! -f "$config" ]; then
-        echo "FRP config not found: $config"
-        return 1
-    fi
-
-    echo "Starting FRP (${frp_mode})..."
-    if [ "$frp_mode" = "client" ]; then
-        local logfile="${logdir}/frpc.log"
-    else
-        local logfile="${logdir}/frps.log"
-    fi
-    # config holds the auth token / dashboard password: root-only
-    chmod 600 "$config"
-    # frp writes and rotates its own log (log.to / log.maxDays in the toml);
-    # daemon(8) only captures stray stdout/stderr such as panics.
-    /usr/sbin/daemon -p "$pidfile" -o "${logfile%.log}.stdout.log" -f "$binary" -c "$config"
+    for r in $roles; do
+        start_role "$r" || rc=1
+    done
+    return $rc
 }
 
 frp_stop()
 {
-    # First try pidfile
-    if [ -f "$pidfile" ]; then
-        pid=$(cat "$pidfile")
-        if kill -0 "$pid" 2>/dev/null; then
-            echo "Stopping FRP (PID: ${pid})..."
-            kill "$pid"
-            count=0
-            while kill -0 "$pid" 2>/dev/null && [ $count -lt 10 ]; do
-                sleep 0.5
-                count=$((count + 1))
-            done
-            if kill -0 "$pid" 2>/dev/null; then
-                kill -9 "$pid"
-            fi
-        fi
-        rm -f "$pidfile"
-    fi
-
-    # Kill any orphaned frpc/frps processes (ours, not someone else's)
-    for proc in frpc frps; do
-        pids=$(pgrep -x "$proc" 2>/dev/null)
-        if [ -n "$pids" ]; then
-            echo "Killing orphaned ${proc} process(es): ${pids}"
-            kill $pids 2>/dev/null
-            sleep 1
-            # Force kill if still alive
-            for p in $pids; do
-                if kill -0 "$p" 2>/dev/null; then
-                    kill -9 "$p"
-                fi
-            done
-        fi
+    local r
+    # stop acts on every role that runs, enabled or not (e.g. just disabled)
+    for r in $(roles_for all); do
+        stop_role "$r"
     done
 }
 
 frp_status()
 {
-    if [ -f "$pidfile" ]; then
-        pid=$(cat "$pidfile")
-        if kill -0 "$pid" 2>/dev/null; then
-            echo "FRP is running (PID: ${pid}, mode: ${frp_mode})"
-            return 0
+    local r bin pids any=1
+    for r in $(roles_for enabled); do
+        bin=$(role_bin "$r")
+        pids=$(role_pids "$r")
+        if [ -n "$pids" ]; then
+            echo "FRP ${r} is running (${bin}, PID: $(echo $pids))"
+            any=0
+        else
+            echo "FRP ${r} is not running"
         fi
-    fi
-    echo "FRP is not running"
-    return 1
+    done
+    [ $any -eq 0 ] || echo "FRP is not running"
+    return $any
+}
+
+# A process started by 1.2 or older only has the legacy pidfile: give it its
+# role pidfile too, so the GUI service status (which reads the role pidfile)
+# sees it without a restart. Runs on every invocation (the watchdog calls
+# status each minute).
+adopt_legacy_pid()
+{
+    local r f p
+    for r in client server; do
+        f=$(role_pidfile "$r")
+        if [ ! -f "$f" ] && p=$(pid_of "$legacy_pidfile" "$(role_bin "$r")"); then
+            echo "$p" > "$f"
+        fi
+    done
 }
 
 frp_restart()
@@ -128,4 +227,5 @@ frp_restart()
     frp_start
 }
 
+adopt_legacy_pid
 run_rc_command "$1"

@@ -6,7 +6,11 @@ configd: configctl frp healthcheck
 Read-only health summary in the os-netbaseline plugin health contract:
 {"checks": [{"name", "ok": true|false|null, "severity", "detail"}]}.
 
-* frpc / frps enabled -> its process is running (rc.d pidfile)
+* frpc / frps enabled -> its process is running (rc.d role pidfile; the
+  pre-1.3 shared pidfile is still accepted)
+* frps with TCP Mux on and a heartbeat timeout other than -1: warned, because a
+  tcpMux frpc sends no application heartbeats and frps then drops its control
+  connection every timeout (the 30-second reset incident)
 * the frp admin API the Monitor page already uses (webServer, only when it
   listens on localhost): proxies that are not running (frpc) / offline (frps)
 
@@ -24,7 +28,8 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 CONFIG_XML = '/conf/config.xml'
-PIDFILE = '/var/run/frp.pid'
+PIDFILES = {'client': '/var/run/frpc.pid', 'server': '/var/run/frps.pid'}
+LEGACY_PIDFILE = '/var/run/frp.pid'
 PS = '/bin/ps'
 API_TIMEOUT = 2
 LOCAL_ADDRS = ('', '127.0.0.1', 'localhost', '0.0.0.0', '::', '::1', '[::]', '[::1]')
@@ -48,13 +53,15 @@ def read_settings(config_xml=CONFIG_XML):
             'port': (base.findtext('webServerPort') or ('7400' if side == 'client' else '7500')).strip(),
             'user': base.findtext('webServerUser') or '',
             'password': base.findtext('webServerPassword') or '',
+            'tcpmux': (base.findtext('transportTcpMux') or '1').strip() == '1',
+            'heartbeat_timeout': (base.findtext('transportHeartbeatTimeout') or '').strip(),
             'proxies': [(p.findtext('name') or '').strip() for p in base.findall('proxies/proxy')
                         if (p.findtext('enabled') or '1').strip() == '1' and (p.findtext('name') or '').strip()],
         }
     return out
 
 
-def process_name(pidfile=PIDFILE, runner=subprocess.run):
+def process_name(pidfile, runner=subprocess.run):
     """-> command name of the process in the rc.d pidfile, '' when it is not running."""
     try:
         with open(pidfile) as f:
@@ -160,27 +167,49 @@ def server_proxy_checks(cfg, get):
     return checks
 
 
-def build(config_xml=CONFIG_XML, pidfile=PIDFILE, runner=subprocess.run, get=http_get):
+def heartbeat_check(server):
+    """frps + tcpMux + heartbeatTimeout != -1 -> warning (None when it does not apply)."""
+    if not server.get('tcpmux'):
+        return None
+    value = server.get('heartbeat_timeout') or '-1'      # empty = model default -1
+    try:
+        ok = int(value) < 0
+    except ValueError:
+        ok = False
+    if ok:
+        return {'name': 'frps heartbeat timeout', 'ok': True, 'severity': 'info',
+                'detail': 'disabled (-1), as needed with TCP Mux'}
+    return {'name': 'frps heartbeat timeout', 'ok': False, 'severity': 'medium',
+            'detail': 'is %s with TCP Mux on: a tcpMux frpc sends no heartbeats, so frps drops its '
+                      'control connection every %s s. Set it to -1' % (value[:8], value[:8])}
+
+
+def build(config_xml=CONFIG_XML, pidfiles=None, runner=subprocess.run, get=http_get,
+          legacy_pidfile=LEGACY_PIDFILE):
+    pidfiles = pidfiles or PIDFILES
     try:
         cfg = read_settings(config_xml)
     except (OSError, ET.ParseError):
         return {'checks': [{'name': 'configuration', 'ok': None, 'severity': 'low', 'detail': 'config.xml not readable'}]}
-    # rc.d runs one mode: client when enabled, else server (frp_rc template)
-    if cfg['client']['enabled']:
-        mode, side = 'frpc', 'client'
-    elif cfg['server']['enabled']:
-        mode, side = 'frps', 'server'
-    else:
-        return {'checks': []}
-    running = process_name(pidfile, runner)
-    checks = [{'name': '%s running' % mode, 'ok': running == mode, 'severity': 'medium',
-               'detail': 'running' if running == mode else (
-                   'not running' if not running else 'pidfile belongs to %s, not %s' % (running[:20], mode))}]
-    if running == mode:
-        checks += (client_proxy_checks if side == 'client' else server_proxy_checks)(cfg[side], get)
-    if cfg['client']['enabled'] and cfg['server']['enabled']:
-        checks.append({'name': 'frps running', 'ok': None, 'severity': 'info',
-                       'detail': 'client and server both enabled: only frpc is started'})
+    checks = []
+    # client and server are separate rc.d roles (1.3+), each with its own pidfile
+    for side, mode, proxy_checks in (('client', 'frpc', client_proxy_checks),
+                                     ('server', 'frps', server_proxy_checks)):
+        if not cfg[side]['enabled']:
+            continue
+        running = process_name(pidfiles[side], runner)
+        if running != mode and legacy_pidfile:
+            legacy = process_name(legacy_pidfile, runner)
+            running = legacy if legacy == mode else (running or legacy)
+        checks.append({'name': '%s running' % mode, 'ok': running == mode, 'severity': 'medium',
+                       'detail': 'running' if running == mode else (
+                           'not running' if not running else 'pidfile belongs to %s, not %s' % (running[:20], mode))})
+        if running == mode:
+            checks += proxy_checks(cfg[side], get)
+        if side == 'server':
+            hb = heartbeat_check(cfg['server'])
+            if hb:
+                checks.append(hb)
     return {'checks': checks}
 
 

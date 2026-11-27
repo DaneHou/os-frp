@@ -210,9 +210,9 @@
     </field>
     <field>
         <id>client.bbrEnabled</id>
-        <label>Enable BBR</label>
+        <label>Enable BBR (whole router)</label>
         <type>checkbox</type>
-        <help>Enables BBR congestion control. WARNING: This is a system-wide kernel setting that affects ALL TCP connections, not just FRP.</help>
+        <help>Makes BBR the default TCP congestion control. Whole router: this changes the TCP stack for every TCP connection on this firewall (DNS, web GUI, reverse proxy and all other services), not only FRP. It stays in effect while either FRP role has it checked.</help>
         <advanced>true</advanced>
     </field>
     <field>
@@ -231,16 +231,16 @@
     </field>
     <field>
         <id>client.tfoEnabled</id>
-        <label>Enable TCP Fast Open</label>
+        <label>Enable TCP Fast Open (whole router)</label>
         <type>checkbox</type>
-        <help>Enables TCP Fast Open (TFO) for faster connection establishment. WARNING: System-wide kernel setting affecting ALL TCP connections.</help>
+        <help>Enables TCP Fast Open (TFO) for faster connection establishment. Whole router: this changes the TCP stack for every TCP connection on this firewall (DNS, web GUI, reverse proxy and all other services), not only FRP. It stays in effect while either FRP role has it checked.</help>
         <advanced>true</advanced>
     </field>
     <field>
         <id>client.tcpTuningEnabled</id>
-        <label>Enable TCP Buffer Tuning</label>
+        <label>Enable TCP Buffer Tuning (whole router)</label>
         <type>checkbox</type>
-        <help>Optimizes TCP buffer sizes and enables window scaling for high-latency cross-border links (4MB buffers, SACK, RFC 1323). WARNING: System-wide kernel settings.</help>
+        <help>Raises TCP buffer sizes and enables window scaling for high-latency cross-border links (4MB buffers, SACK, RFC 1323). Whole router: this changes the TCP stack for every TCP connection on this firewall (DNS, web GUI, reverse proxy and all other services), not only FRP. It stays in effect while either FRP role has it checked.</help>
         <advanced>true</advanced>
     </field>
 </form>
